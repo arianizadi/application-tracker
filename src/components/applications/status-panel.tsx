@@ -5,7 +5,7 @@ import { useOptimistic, useState, useTransition } from "react";
 
 import { useCelebrate } from "@/components/fx";
 import { Mascot, type MascotName } from "@/components/mascots";
-import { StatusPill } from "@/components/ui/status-pill";
+import { LiveStatusPill } from "@/components/ui/status-pill-live";
 import { useToast } from "@/components/ui/toast";
 import { updateStatus } from "@/lib/applications/actions";
 import { STATUS_TOAST } from "@/lib/applications/copy";
@@ -112,13 +112,21 @@ export function StatusPanel({
   const waiting = daysBetween(new Date(last.at), nowMs);
   const companion = COMPANION[current];
 
+  // Stepper motion only plays when progress changes in front of you (never on
+  // mount): each newly reached connector fills left to right, then its node pops.
+  const [step, setStep] = useState({ furthest, current, from: furthest, prevCurrent: current, gen: 0 });
+  if (step.furthest !== furthest || step.current !== current) {
+    setStep({ furthest, current, from: step.furthest, prevCurrent: step.current, gen: step.gen + 1 });
+  }
+  const moved = step.gen > 0;
+
   return (
     <div className="relative">
       {burst ? <LeafBurst key={burst} className="absolute left-1/2 top-0 size-40 -translate-x-1/2 -translate-y-1/4" /> : null}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Progress</h2>
-        <StatusPill status={current} />
+        <LiveStatusPill status={current} />
       </div>
 
       {/* Stepper */}
@@ -127,17 +135,45 @@ export function StatusPanel({
           const done = i <= furthest;
           const isCurrent = s === current;
           const at = firstAt(s);
+          // k-th newly reached step: connectors fill one after another.
+          const newly = moved && i > step.from && i <= furthest;
+          const k = i - step.from - 1;
+          const nodeDelay = newly ? k * 260 + 320 : 0;
+          const drawCheck = moved && done && !isCurrent && (newly || s === step.prevCurrent);
           return (
             <li key={s} aria-current={isCurrent ? "step" : undefined} className="flex min-w-0 flex-col items-center text-center">
               <div className="relative flex w-full items-center justify-center">
-                {i > 0 ? <span aria-hidden className={`absolute right-1/2 top-1/2 h-0.5 w-full -translate-y-1/2 ${i <= furthest ? "bg-moss" : "bg-line"}`} /> : null}
-                <span
-                  className={`relative z-10 flex size-7 items-center justify-center rounded-full border-2 transition-colors ${
-                    isCurrent ? "border-moss bg-moss text-paper" : done ? "border-moss bg-moss-soft text-moss" : "border-line-strong bg-card text-muted"
-                  }`}
-                >
-                  {done && !isCurrent ? <AppIcon name="check" className="size-3.5" /> : <span className="text-[11px] font-semibold">{i + 1}</span>}
-                </span>
+                {i > 0 ? (
+                  <span aria-hidden className="absolute right-1/2 top-1/2 h-0.5 w-full -translate-y-1/2 overflow-hidden bg-line">
+                    <span
+                      className="block size-full origin-left bg-moss transition-transform duration-[420ms] ease-enter motion-reduce:transition-none"
+                      style={{ transform: i <= furthest ? "none" : "scaleX(0)", transitionDelay: newly ? `${k * 260}ms` : undefined }}
+                    />
+                  </span>
+                ) : null}
+                {newly ? (
+                  // Unreached look underneath; the reached node pops in on top when the line arrives.
+                  <span key={`${s}-${step.gen}`} className="relative z-10 flex size-7 items-center justify-center rounded-full border-2 border-line-strong bg-card text-muted">
+                    <span className="text-[11px] font-semibold">{i + 1}</span>
+                    <span
+                      style={{ animationDelay: `${nodeDelay}ms` }}
+                      className={`absolute -inset-0.5 flex animate-node-pop items-center justify-center rounded-full border-2 ${
+                        isCurrent ? "border-moss bg-moss text-paper" : "border-moss bg-moss-soft text-moss"
+                      }`}
+                    >
+                      <StepMark done={done && !isCurrent} n={i + 1} draw={drawCheck} delay={nodeDelay + 140} />
+                    </span>
+                  </span>
+                ) : (
+                  <span
+                    key={s}
+                    className={`relative z-10 flex size-7 items-center justify-center rounded-full border-2 transition-colors duration-[240ms] ${
+                      isCurrent ? "border-moss bg-moss text-paper" : done ? "border-moss bg-moss-soft text-moss" : "border-line-strong bg-card text-muted"
+                    }`}
+                  >
+                    <StepMark done={done && !isCurrent} n={i + 1} draw={drawCheck} delay={60} />
+                  </span>
+                )}
               </div>
               <span className={`mt-1.5 w-full truncate text-[11px] font-medium sm:text-xs ${done ? "text-ink" : "text-muted"}`}>{STATUS_META[s].short}</span>
               <span className="tabular w-full truncate text-[10px] text-muted sm:text-[11px]">{at ? formatInstant(new Date(at), timeZone).replace(/, \d{4}$/, "") : " "}</span>
@@ -164,7 +200,7 @@ export function StatusPanel({
               type="button"
               disabled={pending}
               onClick={() => move(s)}
-              className="flex h-11 items-center gap-2 rounded-full border border-line-strong bg-card px-4 text-sm font-medium transition-[background-color,transform] hover:bg-paper-2 active:scale-[0.97] disabled:opacity-60"
+              className="press flex h-11 items-center gap-2 rounded-full border border-line-strong bg-card px-4 text-sm font-medium hover:bg-paper-2 disabled:opacity-60"
             >
               <span aria-hidden className={`size-2 rounded-full ${STATUS_META[s].dot}`} />
               {STATUS_META[s].label}
@@ -227,6 +263,17 @@ export function StatusPanel({
         <WhenInput value={whenKey} onChange={setWhenKey} min={minDateKey} max={todayKey} id="status-when-sheet" />
       </StatusSheet>
     </div>
+  );
+}
+
+/** A step's check (drawn in when just reached) or its number. */
+function StepMark({ done, n, draw, delay }: { done: boolean; n: number; draw: boolean; delay: number }) {
+  if (!done) return <span className="text-[11px] font-semibold">{n}</span>;
+  if (!draw) return <AppIcon name="check" className="size-3.5" />;
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-3.5">
+      <path d="m5 12.5 4.5 4.5L19 7.5" pathLength={1} strokeDasharray="1" style={{ animationDelay: `${delay}ms` }} className="animate-check-draw" />
+    </svg>
   );
 }
 

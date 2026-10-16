@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 
 import type { AchievementDef, AchievementGroup, BadgeMotif } from "@/lib/game";
+
+import styles from "./achievement-badge.module.css";
 
 /** Per-group palette: disc fill, motif accent, motif stroke. Tokens only, so dark mode just works. */
 const PALETTE: Record<AchievementGroup, { disc: string; accent: string; stroke: string }> = {
@@ -17,6 +19,17 @@ const RIM: Record<1 | 2 | 3, string> = { 1: "var(--bark)", 2: "var(--sun)", 3: "
 
 const LEAF = "M0 -4.6C2.6 -2.2 2.6 2.2 0 4.6C-2.6 2.2 -2.6 -2.2 0 -4.6Z";
 const LEAF_ANGLES = Array.from({ length: 12 }, (_, i) => i * 30);
+
+/** Four-point sparkle centered on 0,0. */
+const SPARKLE = "M0 -3.6Q.5 -.5 3.6 0Q.5 .5 0 3.6Q-.5 .5 -3.6 0Q-.5 -.5 0 -3.6Z";
+/** Fixed spots around the wreath (angle in degrees from 12 o'clock, radius, size). */
+const SPARKLES: { a: number; r: number; s: number }[] = [
+  { a: -52, r: 32, s: 1.5 },
+  { a: 34, r: 33, s: 1.1 },
+  { a: 116, r: 31, s: 1.35 },
+  { a: 192, r: 33, s: 1 },
+  { a: 262, r: 31, s: 1.2 },
+];
 
 function motifArt(motif: BadgeMotif, accent: string): ReactNode {
   switch (motif) {
@@ -172,6 +185,8 @@ export function AchievementBadge({
   size = 64,
   className = "",
   decorative = false,
+  fresh = false,
+  delay = 0,
 }: {
   def: AchievementDef;
   unlocked: boolean;
@@ -180,24 +195,34 @@ export function AchievementBadge({
   className?: string;
   /** Hide from assistive tech when the name is already printed next to it. */
   decorative?: boolean;
+  /** Just unlocked: pop, one sheen sweep and a few sparkles (once, ~1.1 s). */
+  fresh?: boolean;
+  /** Start the fresh moment later (ms), to stagger several badges that unlocked together. */
+  delay?: number;
 }) {
+  const uid = useId();
   const hidden = def.secret && !unlocked;
   const p = PALETTE[def.group];
   const disc = unlocked ? p.disc : "var(--paper-2)";
   const stroke = unlocked ? p.stroke : "var(--line-strong)";
   const accent = unlocked ? p.accent : "var(--line)";
   const label = hidden ? "Secret badge, locked" : `${def.name} badge${unlocked ? "" : ", locked"}`;
+  const sparkle = fresh && unlocked;
+  const clipId = `${uid}-disc`;
+  const sheenId = `${uid}-sheen`;
 
   return (
     <svg
       viewBox="0 0 64 64"
       width={size}
       height={size}
-      className={`shrink-0 ${unlocked ? "" : "opacity-80"} ${className}`}
+      className={`shrink-0 ${sparkle ? "overflow-visible" : ""} ${unlocked ? "" : "opacity-80"} ${className}`}
       role={decorative ? undefined : "img"}
       aria-label={decorative ? undefined : label}
       aria-hidden={decorative || undefined}
+      style={sparkle && delay ? ({ "--badge-delay": `${delay}ms` } as CSSProperties) : undefined}
     >
+      <g className={sparkle ? styles.pop : undefined}>
       {/* Leaf wreath */}
       <g fill={unlocked ? "var(--leaf)" : "var(--line)"}>
         {LEAF_ANGLES.map((a, i) => (
@@ -228,6 +253,39 @@ export function AchievementBadge({
       {unlocked && def.tier === 3 ? (
         <path d="M32 6.5l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.2-2.4 1.2.5-2.6-1.9-1.8 2.6-.4Z" fill="var(--sun)" />
       ) : null}
+      {sparkle ? (
+        <>
+          <defs>
+            <clipPath id={clipId}>
+              <circle cx="32" cy="32" r="23" />
+            </clipPath>
+            <linearGradient id={sheenId} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity="0" />
+              <stop offset="0.5" stopColor="#fff" stopOpacity="0.6" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {/* Diagonal sheen, 40% of the disc wide, swept across once. */}
+          <g clipPath={`url(#${clipId})`} aria-hidden>
+            <g transform="rotate(24 32 32)">
+              <rect className={styles.sheen} x="20" y="0" width="18" height="64" fill={`url(#${sheenId})`} />
+            </g>
+          </g>
+        </>
+      ) : null}
+      </g>
+      {sparkle
+        ? SPARKLES.map((p, i) => {
+            const rad = ((p.a - 90) * Math.PI) / 180;
+            const x = 32 + Math.cos(rad) * p.r;
+            const y = 32 + Math.sin(rad) * p.r;
+            return (
+              <g key={i} transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${p.s})`}>
+                <path d={SPARKLE} fill={i % 2 ? "var(--sun)" : "var(--leaf)"} className={styles.sparkle} style={{ "--i": i } as CSSProperties} />
+              </g>
+            );
+          })
+        : null}
     </svg>
   );
 }

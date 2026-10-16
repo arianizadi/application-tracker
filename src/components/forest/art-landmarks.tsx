@@ -2,6 +2,10 @@
  * Milestone landmarks and clearing props, anchored at their base (0,0).
  * Placement lives in scene.tsx.
  */
+import type { CSSProperties } from "react";
+
+import art from "@/components/art/art.module.css";
+
 import styles from "./forest.module.css";
 
 const WOOD = "var(--k-wood)";
@@ -25,7 +29,11 @@ export function WelcomeSign({ bell }: { bell: boolean }) {
   );
 }
 
-/** First-visit props: a watering can and a "plant here" bed. */
+/**
+ * First-visit props: a watering can and a "plant here" bed. The ring breathes
+ * three times and rests; the can (mirrored so its spout faces the bed) tips
+ * every 9.3 s and lets three drops fall. Motion classes: components/art.
+ */
 export function EmptyBed({ animate }: { animate: boolean }) {
   return (
     <g>
@@ -39,15 +47,28 @@ export function EmptyBed({ animate }: { animate: boolean }) {
         stroke="var(--k-cream)"
         strokeWidth="2"
         strokeDasharray="4 5"
-        className={animate ? styles.ring : undefined}
+        className={animate ? art.ring : undefined}
       />
       <path d="M-4-2q4-6 8 0" stroke="var(--k-frog)" strokeWidth="1.6" fill="none" strokeLinecap="round" />
-      <g transform="translate(58 6)">
-        <path d="M-10 0h18l2-14h-22Z" fill="var(--k-sky)" />
-        <path d="M10-10 22-18l1 2-11 10Z" fill="var(--k-sky)" />
-        <path d="M-7-14q4-10 12 0" stroke="var(--k-raccoonDark)" strokeWidth="1.6" fill="none" />
-        <path d="M23-17l3-2M24-14l4 0" stroke="var(--k-sky)" strokeWidth="1.2" strokeLinecap="round" />
+      <g transform="translate(58 6) scale(-1 1)">
+        <g className={animate ? art.bedCan : undefined}>
+          <path d="M-10 0h18l2-14h-22Z" fill="var(--k-sky)" />
+          <path d="M10-10 22-18l1 2-11 10Z" fill="var(--k-sky)" />
+          <path d="M-7-14q4-10 12 0" stroke="var(--k-raccoonDark)" strokeWidth="1.6" fill="none" />
+          <path d="M23-17l3-2M24-14l4 0" stroke="var(--k-sky)" strokeWidth="1.2" strokeLinecap="round" />
+        </g>
       </g>
+      {animate && (
+        <g fill="var(--k-sky)">
+          {[
+            [29.5, -4, 0],
+            [26.5, -2.5, 90],
+            [31.5, -1.5, 180],
+          ].map(([x, y, d]) => (
+            <path key={d} className={art.drop} style={{ "--d": `${d}ms` } as CSSProperties} d={`M${x} ${y - 2.2}c.9 1.3 1.4 2 1.4 2.6a1.4 1.4 0 0 1-2.8 0c0-.6.5-1.3 1.4-2.6Z`} />
+          ))}
+        </g>
+      )}
     </g>
   );
 }
@@ -99,7 +120,7 @@ export function Stream({ animate }: { animate: boolean }) {
         strokeWidth="2"
         strokeLinecap="round"
         fill="none"
-        className={animate ? styles.shimmer : undefined}
+        className={`${styles.ripple} ${animate ? styles.flow : ""}`}
       />
       <path d="M740 442a5 3 0 1 0 .1 0M786 440a4 2.5 0 1 0 .1 0" fill="var(--k-stone)" />
     </g>
@@ -121,16 +142,20 @@ export function Pond({ animate }: { animate: boolean }) {
   return (
     <g>
       <ellipse cx="0" cy="0" rx="80" ry="18" fill="var(--f-water)" />
-      <path
-        d="M-40-4q10 3 20 0M10 6q12 3 24 0M30-8q8 2 14 0"
-        stroke="var(--f-water-hi)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        fill="none"
-        className={animate ? styles.shimmer : undefined}
-      />
-      <path d="M-34 4a9 3.6 0 1 0 .1 0ZM-6-6a7 3 0 1 0 .1 0Z" fill="var(--k-frog)" />
-      <path d="M-30 2l6-1-6-1ZM-3-6l4-1-4-1Z" fill="var(--f-water)" />
+      <g stroke="var(--f-water-hi)" strokeWidth="2" strokeLinecap="round" fill="none">
+        {["M-40-4q10 3 20 0", "M10 6q12 3 24 0", "M30-8q8 2 14 0"].map((d, i) => (
+          <path
+            key={d}
+            d={d}
+            className={`${styles.ripple} ${animate ? styles.shimmer : ""}`}
+            style={animate ? { animationDuration: `${[4.1, 5.3, 6.7][i]}s`, animationDelay: `${-i * 1.7}s` } : undefined}
+          />
+        ))}
+      </g>
+      <g className={animate ? styles.pads : undefined}>
+        <path d="M-34 4a9 3.6 0 1 0 .1 0ZM-6-6a7 3 0 1 0 .1 0Z" fill="var(--k-frog)" />
+        <path d="M-30 2l6-1-6-1ZM-3-6l4-1-4-1Z" fill="var(--f-water)" />
+      </g>
       <path d="M-72-2q-2-16 2-26M-66 0q1-14 5-22M-60-2q0-10 2-16" stroke="var(--k-shell)" strokeWidth="2" fill="none" strokeLinecap="round" />
     </g>
   );
@@ -153,12 +178,14 @@ export function Treehouse({ animate }: { animate: boolean }) {
       <path d="M14-150h7v-14h-7Z" fill={WOOD_DARK} />
       <rect x="-8" y="-120" width="14" height="12" rx="2" fill="var(--f-window)" />
       <path d="M-1-120v12M-8-114h14" stroke={WOOD_DARK} strokeWidth="1.4" />
-      {animate && (
-        <g>
-          <circle cx="17" cy="-168" r="4" fill="var(--k-cream)" className={styles.smoke} />
-          <circle cx="17" cy="-168" r="4" fill="var(--k-cream)" className={styles.smoke} style={{ animationDelay: "1.5s" }} />
-          <circle cx="17" cy="-168" r="4" fill="var(--k-cream)" className={styles.smoke} style={{ animationDelay: "3s" }} />
+      {animate ? (
+        <g fill="var(--k-cream)">
+          {[0, 2, 4].map((d) => (
+            <circle key={d} cx="17" cy="-168" r="4" className={styles.smoke} style={{ animationDelay: `${-d}s` }} />
+          ))}
         </g>
+      ) : (
+        <circle cx="19" cy="-174" r="5" fill="var(--k-cream)" opacity=".35" />
       )}
     </g>
   );
@@ -182,12 +209,20 @@ export function StumpLibrary({ books }: { books: number }) {
 }
 
 /** A small post lantern (Rue's analyses, and the keepsake picnic lantern). */
-export function PostLantern({ tall = false, animate }: { tall?: boolean; animate: boolean }) {
+export function PostLantern({ tall = false, animate, beat = 0 }: { tall?: boolean; animate: boolean; beat?: number }) {
   const h = tall ? 30 : 14;
   return (
     <g>
       <path d={`M0 0v-${h}`} stroke={WOOD_DARK} strokeWidth={tall ? 2.4 : 1.6} />
-      <circle cx="0" cy={-h - 4} r={tall ? 16 : 9} fill="var(--f-glow)" className={animate ? styles.glow : styles.halo} />
+      <circle
+        cx="0"
+        cy={-h - 4}
+        r={tall ? 16 : 9}
+        fill="var(--f-glow)"
+        className={animate ? styles.glow : styles.halo}
+        // Each lantern breathes on its own slow beat (3.6–4.8 s); never a flicker.
+        style={animate ? { animationDuration: `${(3.6 + ((beat * 0.37) % 1.2)).toFixed(2)}s`, animationDelay: `${(-beat * 1.3).toFixed(1)}s` } : undefined}
+      />
       <rect x={tall ? -4.5 : -3} y={-h - (tall ? 10 : 7)} width={tall ? 9 : 6} height={tall ? 10 : 7} rx="1.5" fill="var(--f-glow)" />
       <path d={`M${tall ? -5 : -3.5} ${-h - (tall ? 10 : 7)}h${tall ? 10 : 7}`} stroke={WOOD_DARK} strokeWidth="1.6" strokeLinecap="round" />
     </g>

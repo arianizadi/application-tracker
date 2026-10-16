@@ -215,37 +215,37 @@ export function MoodFx({ mood, at }: { mood: MascotMood; at: P }) {
   switch (mood) {
     case "cheer":
       return (
-        <g aria-hidden>
+        <g aria-hidden className="cm-fxin">
           <Sparkle x={x} y={y} s={5.5} />
-          <Sparkle x={x + 9} y={y + 13} s={3.2} color="var(--m-sky)" delay={-0.5} />
-          <Sparkle x={120 - x} y={y + 5} s={4.4} delay={-1} />
+          <Sparkle x={x + 9} y={y + 13} s={3.2} color="var(--m-sky)" delay={0.35} />
+          <Sparkle x={120 - x} y={y + 5} s={4.4} delay={0.7} />
         </g>
       );
     case "happy":
       return (
-        <g aria-hidden>
+        <g aria-hidden className="cm-fxin">
           <Sparkle x={x} y={y + 2} s={4} />
-          <Sparkle x={x + 8} y={y + 12} s={2.6} color="var(--m-sky)" delay={-0.8} />
+          <Sparkle x={x + 8} y={y + 12} s={2.6} color="var(--m-sky)" delay={0.45} />
         </g>
       );
     case "think":
       return (
-        <g aria-hidden fill="var(--m-gray)">
+        <g aria-hidden className="cm-fxin" fill="var(--m-gray)">
           <circle className="cm-fx-dot" cx={x - 5} cy={y + 9} r={1.6} />
-          <circle className="cm-fx-dot" cx={x - 1} cy={y + 3} r={2.3} style={{ animationDelay: ".3s" }} />
-          <circle className="cm-fx-dot" cx={x + 5} cy={y - 4} r={3.1} style={{ animationDelay: ".6s" }} />
+          <circle className="cm-fx-dot" cx={x - 1} cy={y + 3} r={2.3} style={{ animationDelay: ".4s" }} />
+          <circle className="cm-fx-dot" cx={x + 5} cy={y - 4} r={3.1} style={{ animationDelay: ".8s" }} />
         </g>
       );
     case "sleepy":
       return (
-        <g aria-hidden fill="none" stroke="var(--m-lav-d)" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <g aria-hidden className="cm-fxin" fill="none" stroke="var(--m-lav-d)" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
           <path className="cm-fx-z" d={`M${x - 4} ${y + 6} h4 l-4 4.5 h4`} />
-          <path className="cm-fx-z" d={`M${x + 3} ${y - 4} h6 l-6 6.5 h6`} style={{ animationDelay: "1.5s" }} />
+          <path className="cm-fx-z" d={`M${x + 3} ${y - 4} h6 l-6 6.5 h6`} style={{ animationDelay: "1.8s" }} />
         </g>
       );
     case "comfort":
       return (
-        <g aria-hidden transform={`translate(${x} ${y})`}>
+        <g aria-hidden className="cm-fxin" transform={`translate(${x} ${y})`}>
           <path
             className="cm-fx-heart"
             d="M0 4 C-6.5 -1 -5 -7.6 0 -4.6 C5 -7.6 6.5 -1 0 4 Z"

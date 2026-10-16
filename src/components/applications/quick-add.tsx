@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ClipboardEvent, type FormEvent, type RefObject } from "react";
+import { useRef, useState, useTransition, type ClipboardEvent, type FormEvent, type RefObject } from "react";
 
 import { Mascot } from "@/components/mascots";
 import { inputClass } from "@/components/ui/field";
@@ -32,8 +32,10 @@ export function QuickAdd({
 }: {
   companyRef: RefObject<HTMLInputElement | null>;
   onOptimisticAdd: (item: ApplicationListItem) => void;
-  onAdded: (item: ApplicationListItem) => void;
+  /** `plantButton` is the Plant button, so the seed-drop celebration can start from it. */
+  onAdded: (item: ApplicationListItem, plantButton: HTMLButtonElement | null) => void;
 }) {
+  const plantRef = useRef<HTMLButtonElement>(null);
   const { value, setValue, restored, savedAt, reset } = useAutosave("application:quick", EMPTY);
   const [status, setStatus] = usePreference<QuickStatus>("canopy:quickadd:status", "APPLIED", QUICK_STATUSES);
   const [guess, setGuess] = useState<JobUrlGuess | null>(null);
@@ -113,7 +115,7 @@ export function QuickAdd({
       reset();
       setGuess(null);
       setPlantKey((k) => k + 1);
-      onAdded(res.data.item);
+      onAdded(res.data.item, plantRef.current);
       toast(
         status === "WISHLIST"
           ? { title: "Saved to your wishlist", body: "A seed for later. Acorn filed it.", tone: "success" }
@@ -210,9 +212,10 @@ export function QuickAdd({
           />
         </div>
         <button
+          ref={plantRef}
           type="submit"
           disabled={pending}
-          className="col-span-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-moss px-5 text-sm font-semibold text-paper shadow-soft transition-[background-color,transform] hover:bg-moss-strong active:scale-[0.97] disabled:opacity-70 sm:col-span-1 sm:h-auto"
+          className="press col-span-2 inline-flex h-11 items-center justify-center gap-1.5 rounded-xl bg-moss px-5 text-sm font-semibold text-paper shadow-soft hover:bg-moss-strong disabled:opacity-70 sm:col-span-1 sm:h-auto"
         >
           <Sprout key={plantKey} play={plantKey > 0} className="-my-1 size-6" />
           {pending ? "Planting…" : "Plant"}

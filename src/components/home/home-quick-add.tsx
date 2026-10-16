@@ -31,9 +31,9 @@ export function HomeQuickAdd() {
       <QuickAdd
         companyRef={companyRef}
         onOptimisticAdd={() => {}}
-        onAdded={(item) => {
-          // The toast already says it in words; this is just the leaves.
-          if (item.status !== "WISHLIST") celebrate("plant", { quiet: true, origin: wrapRef.current ?? undefined });
+        onAdded={(item, plantButton) => {
+          // The toast already says it in words; this is just the seed + leaves, from the Plant button.
+          if (item.status !== "WISHLIST") celebrate("plant", { quiet: true, origin: plantButton ?? wrapRef.current ?? undefined });
         }}
       />
     </div>

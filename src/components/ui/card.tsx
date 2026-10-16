@@ -29,8 +29,9 @@ export function PageHeader({ eyebrow, title, description, action }: { eyebrow?: 
   );
 }
 
+/** Loading placeholder: shows after 250 ms, then a soft shimmer sweeps across (static under reduced motion). */
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div aria-hidden className={`animate-pulse rounded-2xl bg-paper-2 ${className}`} />;
+  return <div aria-hidden className={`skeleton rounded-2xl ${className}`} />;
 }
 
 export function PageSkeleton() {

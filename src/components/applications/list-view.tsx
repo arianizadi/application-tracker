@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { StatusPill } from "@/components/ui/status-pill";
+import { LiveStatusPill as StatusPill } from "@/components/ui/status-pill-live";
 import { dateToKey, formatDateKey } from "@/lib/applications/dates";
 import type { SortKey } from "@/lib/applications/filter";
 import { WORK_MODE_LABEL } from "@/lib/applications/schema";

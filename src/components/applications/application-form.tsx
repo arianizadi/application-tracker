@@ -409,7 +409,7 @@ export function ApplicationForm({
         <button
           type="submit"
           disabled={pending || (mode === "edit" && !dirty)}
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-moss px-5 text-sm font-semibold text-paper shadow-soft transition-[background-color,transform] hover:bg-moss-strong active:scale-[0.97] disabled:opacity-50"
+          className="press inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-moss px-5 text-sm font-semibold text-paper shadow-soft hover:bg-moss-strong disabled:opacity-50"
         >
           {pending ? "Saving…" : mode === "create" ? (v.status === "WISHLIST" ? "Save to wishlist" : "Plant it") : "Save changes"}
         </button>

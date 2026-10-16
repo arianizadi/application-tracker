@@ -73,6 +73,17 @@ export default async function AchievementsPage({ searchParams }: PageProps<"/ach
     filter === "unlocked" ? unlocked.has(a.key) : filter === "locked" ? !unlocked.has(a.key) : true,
   );
 
+  // Badges earned in the last day get one small sparkle moment, staggered so they never pop
+  // in lockstep; older ones simply sit on the shelf.
+  const FRESH_MS = 24 * 60 * 60 * 1000;
+  const freshOrder = new Map(
+    [...earned]
+      .filter((e) => isAchievementKey(e.key) && now.getTime() - new Date(e.unlockedAt).getTime() < FRESH_MS)
+      .sort((a, b) => new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime())
+      .slice(0, 6)
+      .map((e, i) => [e.key, i]),
+  );
+
   const recent = [...earned]
     .filter((e) => isAchievementKey(e.key))
     .sort((a, b) => new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime())[0];
@@ -215,14 +226,14 @@ export default async function AchievementsPage({ searchParams }: PageProps<"/ach
           <Card>
             {filter === "unlocked" ? (
               <EmptyState
-                art={<Mascot name="fern" mood="happy" className="size-24" />}
+                art={<Mascot name="fern" mood="happy" enter className="size-24" />}
                 title="No badges yet. Plenty of potential."
                 action={<ButtonLink href="/applications/new">Add an application</ButtonLink>}
               >
                 Your first badge is one submitted application away. Fern believes in tiny hops.
               </EmptyState>
             ) : (
-              <EmptyState art={<Mascot name="miso" mood="cheer" className="size-24" />} title="You found every badge!">
+              <EmptyState art={<Mascot name="miso" mood="cheer" enter className="size-24" />} title="You found every badge!">
                 Miso is doing backflips. Honestly, take the rest of the day off.
               </EmptyState>
             )}
@@ -251,6 +262,7 @@ export default async function AchievementsPage({ searchParams }: PageProps<"/ach
                       def={def}
                       unlocked={unlocked.has(def.key)}
                       unlockedAt={earnedAt.get(def.key)}
+                      freshIndex={freshOrder.get(def.key)}
                       progress={game.achievementProgress[def.key]}
                       fmt={fmt}
                     />
@@ -322,12 +334,15 @@ function BadgeCard({
   def,
   unlocked,
   unlockedAt,
+  freshIndex,
   progress,
   fmt,
 }: {
   def: AchievementDef;
   unlocked: boolean;
   unlockedAt: Date | undefined;
+  /** Order among badges earned in the last day (staggers their sparkle), else undefined. */
+  freshIndex?: number;
   progress: AchievementProgress | undefined;
   fmt: Intl.DateTimeFormat;
 }) {
@@ -341,7 +356,13 @@ function BadgeCard({
         unlocked ? "border-line bg-card shadow-soft" : "border-dashed border-line bg-paper-2/40"
       }`}
     >
-      <AchievementBadge def={def} unlocked={unlocked} size={72} className={unlocked ? "animate-pop" : ""} />
+      <AchievementBadge
+        def={def}
+        unlocked={unlocked}
+        size={72}
+        fresh={unlocked && freshIndex !== undefined}
+        delay={freshIndex !== undefined ? 450 + freshIndex * 160 : 0}
+      />
       <p className={`font-display text-[15px] font-semibold leading-tight ${unlocked ? "" : "text-ink-soft"}`}>{name}</p>
       <p className="text-xs leading-relaxed text-ink-soft">
         {hidden ? "A secret. Keep exploring the forest." : unlocked ? def.description : def.hint}

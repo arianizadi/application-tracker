@@ -43,7 +43,7 @@ export default async function ResumesPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
           <Card>
             <EmptyState
-              art={<Mascot name="nib" mood="happy" className="size-32 animate-float" title="Nib the beaver holding a blank plant marker" />}
+              art={<Mascot name="nib" mood="happy" enter className="size-32" title="Nib the beaver holding a blank plant marker" />}
               title="Give your next application a paper trail."
             >
               <p>

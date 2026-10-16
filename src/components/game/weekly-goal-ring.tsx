@@ -73,7 +73,7 @@ export function WeeklyGoalRing({
               strokeDasharray="100"
               transform="rotate(-90 50 50)"
               style={{ "--off": 100 - Math.min(100, Math.round((count / goal) * 100)) } as CSSProperties}
-              className="transition-[stroke-dashoffset] duration-1000 ease-out [stroke-dashoffset:var(--off)] starting:[stroke-dashoffset:100] motion-reduce:transition-none"
+              className="[transition:stroke-dashoffset_900ms_var(--ease-enter)_150ms,opacity_120ms_linear_150ms] [stroke-dashoffset:var(--off)] starting:[stroke-dashoffset:100] starting:opacity-0 motion-reduce:transition-none"
             />
           )}
         </svg>

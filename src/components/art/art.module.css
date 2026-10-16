@@ -1,0 +1,178 @@
+/* Small illustrations for empty states. One-shot entrances, then stillness;
+   the only loop is the watering can's slow pour (once every 9.3 s).
+   Transforms + opacity only. Everything settles to its final frame under
+   prefers-reduced-motion. */
+
+/* ── Entrances ──────────────────────────────────────────────────────────── */
+
+/* Supporting illustration / preview: a quiet 300 ms fade. */
+.fadeIn {
+  animation: art-fade 300ms var(--ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) var(--fade-delay, 120ms) both;
+}
+
+@keyframes art-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Planting bed ───────────────────────────────────────────────────────── */
+
+.bed {
+  --soil: #a0714a;
+  --soil-d: #7d5434;
+  --soil-hi: #b98a5f;
+  --stake: #8a6040;
+  --can: #7fbfdc;
+  --can-d: #4f93b4;
+  --can-hi: rgb(255 255 255 / 0.45);
+  --drop: #6fb3d4;
+  overflow: visible;
+}
+
+:global(:root[data-theme="dark"]) .bed {
+  --soil: #6d4b31;
+  --soil-d: #523621;
+  --soil-hi: #87613f;
+  --stake: #b48a62;
+  --can: #6fb4d2;
+  --can-d: #3f7d9c;
+  --can-hi: rgb(255 255 255 / 0.3);
+  --drop: #8fd0ea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .bed {
+    --soil: #6d4b31;
+    --soil-d: #523621;
+    --soil-hi: #87613f;
+    --stake: #b48a62;
+    --can: #6fb4d2;
+    --can-d: #3f7d9c;
+    --can-hi: rgb(255 255 255 / 0.3);
+    --drop: #8fd0ea;
+  }
+}
+
+/* "Plant here" ring: three slow breaths, then it rests at half strength. */
+.ring {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  opacity: 0.5;
+  animation: art-ring 2.6s var(--ease-ambient, cubic-bezier(0.37, 0, 0.63, 1)) 600ms 3 both;
+}
+
+@keyframes art-ring {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.045);
+  }
+}
+
+/* The sprout unfurls from the soil once. */
+.sprout {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: art-sprout 760ms var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1)) 260ms both;
+}
+
+@keyframes art-sprout {
+  0% {
+    opacity: 0;
+    transform: scale(0.2, 0);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1, 1);
+  }
+}
+
+/* Watering can: every 9.3 s it tips toward the sprout (600 ms), pours for a
+   beat while three droplets fall, and settles back (500 ms). */
+.can {
+  transform-box: view-box;
+  transform-origin: 134px 104px;
+  animation: art-pour 9.3s var(--ease-ambient, cubic-bezier(0.37, 0, 0.63, 1)) 1.6s infinite;
+}
+
+@keyframes art-pour {
+  0%,
+  19.5%,
+  100% {
+    transform: rotate(0deg);
+  }
+  6.5%,
+  13.5% {
+    transform: rotate(-16deg);
+  }
+}
+
+/* The forest's EmptyBed can (spout drawn pointing right, mirrored in place):
+   same 9.3 s pour, rotating the other way around its front heel. */
+.bedCan {
+  transform-box: fill-box;
+  transform-origin: 47% 100%;
+  animation: art-pour-cw 9.3s var(--ease-ambient, cubic-bezier(0.37, 0, 0.63, 1)) 1.6s infinite;
+}
+
+@keyframes art-pour-cw {
+  0%,
+  19.5%,
+  100% {
+    transform: rotate(0deg);
+  }
+  6.5%,
+  13.5% {
+    transform: rotate(18deg);
+  }
+}
+
+.drop {
+  opacity: 0;
+  animation: art-drop 9.3s var(--ease-fall, cubic-bezier(0.3, 0.1, 0.7, 0.9)) calc(1.6s + var(--d, 0ms)) infinite;
+}
+
+@keyframes art-drop {
+  0%,
+  7% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  8% {
+    opacity: 1;
+  }
+  12.4% {
+    opacity: 0.9;
+    transform: translateY(9px);
+  }
+  13%,
+  100% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeIn,
+  .sprout {
+    animation: none;
+    opacity: 1;
+  }
+  .ring,
+  .can,
+  .bedCan,
+  .drop {
+    animation: none;
+  }
+}

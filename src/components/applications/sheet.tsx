@@ -1,7 +1,7 @@
 "use client";
 
 import type { ApplicationStatus } from "@prisma/client";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { ACTIVE_STATUSES, CLOSED_STATUSES, STATUS_META } from "@/lib/status";
 
@@ -27,6 +27,15 @@ export function Sheet({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  // Content stays mounted through the 220 ms slide-out, then unmounts.
+  const [mounted, setMounted] = useState(open);
+  if (open && !mounted) setMounted(true);
+
+  useEffect(() => {
+    if (open || !mounted) return;
+    const t = window.setTimeout(() => setMounted(false), 240);
+    return () => window.clearTimeout(t);
+  }, [open, mounted]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -43,10 +52,10 @@ export function Sheet({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 m-0 mt-auto max-h-[88dvh] w-full max-w-full overflow-y-auto rounded-t-3xl border border-line bg-card p-0 text-ink shadow-lift backdrop:bg-night/40 backdrop:backdrop-blur-[2px] sm:m-auto sm:w-[28rem] sm:rounded-3xl"
+      className="sheet-motion fixed inset-0 m-0 mt-auto max-h-[88dvh] w-full max-w-full overflow-y-auto rounded-t-3xl border border-line bg-card p-0 text-ink shadow-lift backdrop:bg-night/40 sm:m-auto sm:w-[28rem] sm:rounded-3xl"
     >
-      {open ? (
-        <div className="pb-safe animate-rise px-5 pt-3 sm:px-6 sm:pt-6">
+      {mounted ? (
+        <div className="pb-safe px-5 pt-3 sm:px-6 sm:pt-6">
           <div aria-hidden className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line-strong sm:hidden" />
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="min-w-0">

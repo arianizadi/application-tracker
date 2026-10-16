@@ -92,23 +92,49 @@ export function Buds() {
   );
 }
 
+/** Where the five interview blossoms sit on a mature canopy (tree-local units). */
+export const BLOSSOM_SPOTS: readonly (readonly [number, number])[] = [
+  [-26, -68],
+  [-6, -96],
+  [18, -84],
+  [26, -58],
+  [0, -62],
+];
+
+/** One lavender blossom centred on (0,0). The scene places five per tree so each can open on its own beat. */
+export function Flower() {
+  return (
+    <g>
+      <path d="M-5 0a5 5 0 1 0 10 0a5 5 0 1 0-10 0" fill="var(--k-lavender)" />
+      <path d="M-1.8 0a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0" fill="var(--k-cream)" />
+    </g>
+  );
+}
+
 /** Five lavender blossoms: interviewing. */
 export function Blossoms() {
-  const flowers: [number, number][] = [
-    [-26, -68],
-    [-6, -96],
-    [18, -84],
-    [26, -58],
-    [0, -62],
-  ];
-  const petals = flowers
-    .map(([x, y]) => `M${x - 5} ${y}a5 5 0 1 0 10 0a5 5 0 1 0-10 0`)
-    .join("");
-  const centres = flowers.map(([x, y]) => `M${x - 1.8} ${y}a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0`).join("");
+  const petals = BLOSSOM_SPOTS.map(([x, y]) => `M${x - 5} ${y}a5 5 0 1 0 10 0a5 5 0 1 0-10 0`).join("");
+  const centres = BLOSSOM_SPOTS.map(([x, y]) => `M${x - 1.8} ${y}a1.8 1.8 0 1 0 3.6 0a1.8 1.8 0 1 0-3.6 0`).join("");
   return (
     <g>
       <path d={petals} fill="var(--k-lavender)" />
       <path d={centres} fill="var(--k-cream)" />
+    </g>
+  );
+}
+
+/** The lantern's warm halo on its own, so the scene can light it separately. */
+export function LanternHalo() {
+  return <circle cx="24" cy="-42" r="18" fill="var(--f-glow)" />;
+}
+
+/** The hanging lantern without its halo. */
+export function LanternBody() {
+  return (
+    <g>
+      <path d="M24-62v12" stroke="var(--k-woodDark)" strokeWidth="1.5" />
+      <path d="M19-50h10l2 4v10l-2 3H19l-2-3v-10Z" fill="var(--f-glow)" />
+      <path d="M18-50h12M18-33h12" stroke="var(--k-woodDark)" strokeWidth="2.4" strokeLinecap="round" />
     </g>
   );
 }
@@ -125,14 +151,32 @@ export function Lantern() {
   );
 }
 
+function Pennant() {
+  return (
+    <>
+      <path d="M0-112v-30" stroke="var(--k-woodDark)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M1-142 22-135 1-128Z" fill="var(--k-coral)" />
+      <path d="M-30-104l3-6 3 6-3 6ZM34-96l2-4 2 4-2 4ZM-40-76l2-4 2 4-2 4Z" fill="var(--f-glow)" />
+    </>
+  );
+}
+
+/** Accepted, without the halo (the scene lights that separately). */
+export function CrownBody() {
+  return (
+    <g>
+      <LanternBody />
+      <Pennant />
+    </g>
+  );
+}
+
 /** Accepted: lantern plus a celebratory pennant on top. */
 export function Crown() {
   return (
     <g>
       <Lantern />
-      <path d="M0-112v-30" stroke="var(--k-woodDark)" strokeWidth="2" strokeLinecap="round" />
-      <path d="M1-142 22-135 1-128Z" fill="var(--k-coral)" />
-      <path d="M-30-104l3-6 3 6-3 6ZM34-96l2-4 2 4-2 4ZM-40-76l2-4 2 4-2 4Z" fill="var(--f-glow)" />
+      <Pennant />
     </g>
   );
 }
@@ -149,6 +193,26 @@ export function Ribbon() {
 
 /** Rejection compost: mushrooms + leaf litter + a fresh sprout. Four shapes. */
 export function Compost({ shape }: { shape: 0 | 1 | 2 | 3 }) {
+  return (
+    <g>
+      <CompostBed shape={shape} />
+      <CompostSprout />
+    </g>
+  );
+}
+
+/** The sprout that compost feeds ("rejections are fertilizer"); grows on its own beat. */
+export function CompostSprout() {
+  return (
+    <g>
+      <path d="M-10 0v-6" stroke="var(--f-meadow-shade)" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M-10-5c-4-1-6-4-5-6 3 0 5 2 5 6ZM-10-6c3-3 6-3 7-1-2 2-4 2-7 1Z" fill="var(--k-frog)" />
+    </g>
+  );
+}
+
+/** Mushrooms and leaf litter, without the sprout. */
+export function CompostBed({ shape }: { shape: 0 | 1 | 2 | 3 }) {
   return (
     <g>
       <ellipse cx="8" cy="0" rx="22" ry="3.2" fill="var(--k-woodDark)" opacity=".4" />
@@ -181,9 +245,6 @@ export function Compost({ shape }: { shape: 0 | 1 | 2 | 3 }) {
           <path d="M10-8c2 2 3 5 3 8h2c0-3 1-6 3-8ZM19-5c1 1 2 3 2 5h2c0-2 1-4 2-5Z" fill="var(--k-mushroom2)" />
         </>
       )}
-      {/* a sprout: compost feeding new growth */}
-      <path d="M-10 0v-6" stroke="var(--f-meadow-shade)" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M-10-5c-4-1-6-4-5-6 3 0 5 2 5 6ZM-10-6c3-3 6-3 7-1-2 2-4 2-7 1Z" fill="var(--k-frog)" />
       <path d="M2 0l3-2 2 2ZM28 0l2-2 3 2Z" fill="var(--k-amber)" opacity=".8" />
     </g>
   );

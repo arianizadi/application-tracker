@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
 import { useBottomUi } from "@/hooks/use-bottom-ui";
@@ -45,18 +45,29 @@ export function UndoBar() {
   const barRef = useRef<HTMLDivElement>(null);
   useBottomUi(barRef, Boolean(current));
 
+  // Keep the last entry on screen for its exit (180 ms) after it's dismissed.
+  const [shown, setShown] = useState<UndoEntry | null>(current);
+  if (current && current !== shown) setShown(current);
+  const leaving = !current && shown !== null;
+
   useEffect(() => {
     if (!current) return;
     const t = window.setTimeout(() => dismiss(current.id), UNDO_MS);
     return () => window.clearTimeout(t);
   }, [current]);
 
-  if (!current) return null;
+  useEffect(() => {
+    if (!leaving) return;
+    const t = window.setTimeout(() => setShown(null), 180);
+    return () => window.clearTimeout(t);
+  }, [leaving]);
+
+  if (!shown) return null;
 
   const restore = () =>
     startTransition(async () => {
-      const res = await restoreApplications(current.records);
-      dismiss(current.id);
+      const res = await restoreApplications(shown.records);
+      dismiss(shown.id);
       if (res.ok) {
         toast({ title: "Restored", body: res.data.count === 1 ? "Right back where it was." : `${res.data.count} applications are back.`, tone: "success" });
       } else {
@@ -70,10 +81,12 @@ export function UndoBar() {
         ref={barRef}
         role="status"
         aria-live="polite"
-        className="pointer-events-auto flex w-full max-w-md animate-rise items-center gap-3 rounded-2xl bg-ink px-4 py-2.5 text-sm text-paper shadow-lift"
+        className={`flex w-full max-w-md items-center gap-3 rounded-2xl bg-ink px-4 py-2.5 text-sm text-paper shadow-lift ${
+          leaving ? "pointer-events-none animate-leave" : "pointer-events-auto animate-[rise-sm_360ms_var(--ease-enter)_both]"
+        }`}
       >
         <AppIcon name="trash" className="size-4 shrink-0 opacity-70" />
-        <p className="min-w-0 flex-1 truncate">{current.label}</p>
+        <p className="min-w-0 flex-1 truncate">{shown.label}</p>
         <button
           type="button"
           onClick={restore}
@@ -83,7 +96,7 @@ export function UndoBar() {
           <AppIcon name="undo" className="size-4" />
           {pending ? "Restoring…" : "Undo"}
         </button>
-        <button type="button" onClick={() => dismiss(current.id)} aria-label="Dismiss" className="flex size-10 items-center justify-center rounded-full opacity-70 hover:bg-paper/15 hover:opacity-100">
+        <button type="button" onClick={() => dismiss(shown.id)} aria-label="Dismiss" className="flex size-10 items-center justify-center rounded-full opacity-70 hover:bg-paper/15 hover:opacity-100">
           <AppIcon name="x" className="size-4" />
         </button>
       </div>

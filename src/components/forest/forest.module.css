@@ -1,9 +1,21 @@
-/* Ambient motion for the forest. Transforms + opacity only; everything stops
-   under prefers-reduced-motion and while the scene is offscreen. */
+/* Motion for the forest. Weather and breathing, not UI chrome: you notice it
+   on the third look. Transforms + opacity only (stroke-dashoffset for the one
+   shooting star). Every loop gets its own period/phase from scene.tsx, so
+   nothing moves in lockstep. Everything stops under prefers-reduced-motion,
+   while the scene is offscreen, and while the tab is hidden.
+
+   Tokens come from globals.css (--ease-*); each use carries a fallback so the
+   scene still moves correctly wherever it is rendered. */
 
 .scene {
   --f-dim: 0;
+  --f-ease-enter: var(--ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  --f-ease-exit: var(--ease-exit, cubic-bezier(0.4, 0, 1, 1));
+  --f-ease-ambient: var(--ease-ambient, cubic-bezier(0.37, 0, 0.63, 1));
+  --f-ease-spring: var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+  --f-ease-fall: var(--ease-fall, cubic-bezier(0.3, 0.1, 0.7, 0.9));
   display: block;
+  contain: layout paint;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -28,20 +40,6 @@
   opacity: calc(var(--f-glow-o) * 0.5);
 }
 
-/* ── Trees ─────────────────────────────────────────────────────────────── */
-
-.sway {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: sway 7s ease-in-out infinite;
-}
-
-.grow {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: grow 1.2s cubic-bezier(0.34, 1.4, 0.64, 1) 0.3s both;
-}
-
 .tree {
   cursor: pointer;
   outline: none;
@@ -52,325 +50,848 @@
   filter: drop-shadow(0 0 2px var(--focus)) drop-shadow(0 0 1px var(--focus));
 }
 
-@keyframes sway {
-  0%,
-  100% {
-    transform: rotate(-1.2deg);
-  }
-  50% {
-    transform: rotate(1.2deg);
+/* ── Wind ──────────────────────────────────────────────────────────────────
+   One shared 17 s cycle. Each tree rocks gently (≤0.8° × --wa) on one of three
+   rhythms, then at ~74% a gust leans it with the wind (2.2° × --gs) and lets it
+   settle with a damped wobble. The delay (from x) rolls the gust left → right.
+   Every keyframe is an extreme, so the per-segment sine easing reads as a
+   pendulum. Pivot: the trunk base (the group's local origin). */
+
+.wind {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+.windA {
+  animation: f-wind-a 17s var(--f-ease-ambient) infinite;
+}
+
+.windB {
+  animation: f-wind-b 17s var(--f-ease-ambient) infinite;
+}
+
+.windC {
+  animation: f-wind-c 17s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-wind-a {
+  0%, 100% { transform: rotate(calc(var(--wa) * -0.45deg)); }
+  16% { transform: rotate(calc(var(--wa) * 0.8deg)); }
+  34% { transform: rotate(calc(var(--wa) * -0.7deg)); }
+  52% { transform: rotate(calc(var(--wa) * 0.6deg)); }
+  67% { transform: rotate(calc(var(--wa) * -0.35deg)); }
+  74% { transform: rotate(calc(var(--gs) * 2.2deg)); }
+  80% { transform: rotate(calc(var(--gs) * -0.6deg)); }
+  86% { transform: rotate(calc(var(--gs) * 0.3deg)); }
+  92% { transform: rotate(calc(var(--wa) * -0.1deg)); }
+}
+
+@keyframes f-wind-b {
+  0%, 100% { transform: rotate(calc(var(--wa) * 0.5deg)); }
+  22% { transform: rotate(calc(var(--wa) * -0.8deg)); }
+  45% { transform: rotate(calc(var(--wa) * 0.65deg)); }
+  67% { transform: rotate(calc(var(--wa) * -0.4deg)); }
+  74% { transform: rotate(calc(var(--gs) * 2deg)); }
+  80% { transform: rotate(calc(var(--gs) * -0.55deg)); }
+  86% { transform: rotate(calc(var(--gs) * 0.25deg)); }
+  93% { transform: rotate(calc(var(--wa) * 0.1deg)); }
+}
+
+@keyframes f-wind-c {
+  0%, 100% { transform: rotate(calc(var(--wa) * -0.3deg)); }
+  11% { transform: rotate(calc(var(--wa) * 0.6deg)); }
+  24% { transform: rotate(calc(var(--wa) * -0.65deg)); }
+  37% { transform: rotate(calc(var(--wa) * 0.7deg)); }
+  50% { transform: rotate(calc(var(--wa) * -0.6deg)); }
+  61% { transform: rotate(calc(var(--wa) * 0.45deg)); }
+  67% { transform: rotate(calc(var(--wa) * -0.3deg)); }
+  74% { transform: rotate(calc(var(--gs) * 2.3deg)); }
+  80% { transform: rotate(calc(var(--gs) * -0.65deg)); }
+  86% { transform: rotate(calc(var(--gs) * 0.3deg)); }
+  92% { transform: rotate(0deg); }
+}
+
+/* Grass sways faster and wider, and catches the gust a beat before the trees. */
+.grass {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: f-grass 17s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-grass {
+  0%, 100% { transform: rotate(calc(var(--ga) * -2deg)); }
+  12% { transform: rotate(calc(var(--ga) * 2.4deg)); }
+  25% { transform: rotate(calc(var(--ga) * -2.2deg)); }
+  38% { transform: rotate(calc(var(--ga) * 2.4deg)); }
+  50% { transform: rotate(calc(var(--ga) * -2.2deg)); }
+  61% { transform: rotate(calc(var(--ga) * 2deg)); }
+  68% { transform: rotate(calc(var(--ga) * -1.2deg)); }
+  73% { transform: rotate(calc(var(--ga) * 6deg)); }
+  78% { transform: rotate(calc(var(--ga) * -2deg)); }
+  84% { transform: rotate(calc(var(--ga) * 1.6deg)); }
+  90% { transform: rotate(calc(var(--ga) * -0.8deg)); }
+}
+
+/* ── New trees grow in, once (ForestFrame drives the attributes) ───────────
+   [data-fresh]  planted ≤7 days ago (server)   [data-grow]  grow it (client, or
+   server for the landing intro)   [data-change] a status beat since last visit
+   frame[data-ready] client decided   frame[data-go] the forest is on screen. */
+
+.body {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+.seed {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.deco {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.hang {
+  transform-origin: 50% 0;
+}
+
+.late,
+.compost,
+.sprout,
+.fogUse,
+.ghostUse,
+.logUse {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* 1 · Before the client has decided: keep fresh (and intro) growth hidden, but
+   reveal it anyway after 2.5 s so a page without JavaScript is never missing trees. */
+.frame:not([data-ready]) :is([data-fresh], [data-grow]) :is(.body, .late),
+.frame[data-intro]:not([data-ready]) .critter {
+  opacity: 0;
+  animation: f-fade 1ms 2.5s both;
+}
+
+@media (scripting: none) {
+  .frame:not([data-ready]) :is([data-fresh], [data-grow]) :is(.body, .late),
+  .frame[data-intro]:not([data-ready]) .critter {
+    opacity: 1;
+    animation: none;
   }
 }
 
-@keyframes grow {
-  0% {
-    transform: scale(0.2, 0);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1, 1);
-    opacity: 1;
-  }
+/* 2 · Chosen to grow; waiting until the forest is actually on screen. */
+.frame[data-ready]:not([data-go]) [data-grow] :is(.body, .late),
+.frame[data-intro][data-ready]:not([data-go]) .critter {
+  opacity: 0;
+}
+
+/* 3 · Fresh but already seen on this device: settle in quietly, no grow. */
+.frame[data-ready] [data-fresh]:not([data-grow]) :is(.body, .late) {
+  animation: f-fade 240ms ease-out both;
+}
+
+/* 4 · The grow: a seed drops and squashes, the tree rises from its base with a
+   soft overshoot, then its status decorations unfurl. --gd staggers trees. */
+.frame[data-go] [data-grow] .seed {
+  animation: f-seed 640ms var(--f-ease-exit) var(--gd, 0ms) both;
+}
+
+.frame[data-go] [data-grow] .body {
+  animation: f-grow 950ms var(--f-ease-enter) calc(var(--gd, 0ms) + 150ms) both;
+}
+
+.frame[data-go] [data-grow] .deco {
+  animation: f-pop 420ms var(--f-ease-spring) calc(var(--gd, 0ms) + 750ms + var(--i, 0) * 60ms) both;
+}
+
+.frame[data-go] [data-grow] .haloUse {
+  animation: f-light 700ms ease-out calc(var(--gd, 0ms) + 900ms) both;
+}
+
+.frame[data-go] [data-grow] .late {
+  animation: f-pop 560ms var(--f-ease-spring) calc(var(--gd, 0ms) + 950ms) both;
+}
+
+/* Landing intro: a quicker grow, then the residents arrive. */
+.frame[data-intro][data-go] [data-grow] .body {
+  animation-duration: 700ms;
+}
+
+.frame[data-intro][data-go] [data-grow] .deco {
+  animation-delay: calc(var(--gd, 0ms) + 600ms + var(--i, 0) * 60ms);
+}
+
+.frame[data-intro][data-go] .critter {
+  animation: f-arrive 520ms var(--f-ease-enter) calc(1400ms + var(--ci, 0) * 60ms) both;
+}
+
+@keyframes f-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes f-seed {
+  0% { transform: translateY(-10px); opacity: 0; }
+  12% { opacity: 1; }
+  28% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  40% { transform: scale(1.3, 0.7); animation-timing-function: ease-in-out; }
+  56% { transform: scale(1, 1); opacity: 1; }
+  100% { transform: scale(0.6, 0.6); opacity: 0; }
+}
+
+@keyframes f-grow {
+  0% { transform: scale(0.15, 0); opacity: 0; }
+  15% { opacity: 1; }
+  60% { transform: scale(1.04, 1.08); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+  80% { transform: scale(0.985, 0.975); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+  100% { transform: scale(1, 1); opacity: 1; }
+}
+
+@keyframes f-pop {
+  0% { transform: scale(0); opacity: 0; }
+  35% { opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes f-light {
+  from { opacity: 0; }
+  to { opacity: calc(var(--f-glow-o) * 0.5); }
+}
+
+@keyframes f-arrive {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Status beats since your last visit ─────────────────────────────────── */
+
+/* Interview: the blossoms open one by one. */
+.frame[data-go] [data-change="blossoms"] .deco {
+  animation: f-bloom 360ms ease-out calc(var(--gd, 0ms) + var(--i, 0) * 70ms) both;
+}
+
+/* Assessment: buds swell. */
+.frame[data-go] [data-change="buds"] .deco {
+  animation: f-pop 420ms var(--f-ease-spring) var(--gd, 0ms) both;
+}
+
+/* Offer: the lantern lights, glows twice, then settles to its ambient glow. */
+.frame[data-go] [data-change="lantern"] .haloUse {
+  animation: f-lantern 2.2s ease-in-out var(--gd, 0ms) both;
+}
+
+.frame[data-go] [data-change="lantern"] .hang {
+  animation: f-swing 1.4s var(--f-ease-ambient) var(--gd, 0ms) both;
+}
+
+/* Rejection: a mushroom pops up, then a sprout ("rejections are fertilizer"). */
+.frame[data-go] [data-change="compost"] .compost {
+  animation: f-mush 600ms var(--gd, 0ms) both;
+}
+
+.frame[data-go] [data-change="compost"] .sprout {
+  animation: f-sprout 320ms var(--f-ease-enter) calc(var(--gd, 0ms) + 1000ms) both;
+}
+
+/* Ghosted: the fog rolls in and the ghost peeks out. */
+.frame[data-go] [data-change="fog"] .fogUse {
+  animation: f-fade 1.2s ease-out var(--gd, 0ms) both;
+}
+
+.frame[data-go] [data-change="fog"] .ghostUse {
+  animation: f-peek 500ms var(--f-ease-enter) calc(var(--gd, 0ms) + 600ms) both;
+}
+
+/* Withdrawn: the log simply appears. No flourish. */
+.frame[data-go] [data-change="log"] .logUse {
+  animation: f-fade 400ms ease-out var(--gd, 0ms) both;
+}
+
+/* Calm celebrations: every beat is a plain fade. */
+.frame[data-calm][data-go] [data-change] :is(.deco, .haloUse, .compost, .sprout, .fogUse, .ghostUse, .logUse) {
+  animation: f-fade 300ms ease-out var(--gd, 0ms) both;
+}
+
+@keyframes f-bloom {
+  0% { transform: scale(0); opacity: 0; }
+  30% { opacity: 1; }
+  70% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes f-lantern {
+  0% { opacity: 0; }
+  27% { opacity: calc(var(--f-glow-o) * 0.95); }
+  45% { opacity: calc(var(--f-glow-o) * 0.5); }
+  63% { opacity: calc(var(--f-glow-o) * 0.85); }
+  82% { opacity: calc(var(--f-glow-o) * 0.45); }
+  100% { opacity: calc(var(--f-glow-o) * 0.5); }
+}
+
+@keyframes f-swing {
+  0% { transform: rotate(7deg); }
+  35% { transform: rotate(-4deg); }
+  65% { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes f-mush {
+  0% { transform: scale(0); opacity: 0; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  25% { opacity: 1; }
+  55% { transform: scale(1.15); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+  78% { transform: scale(0.95); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes f-sprout {
+  0% { transform: scale(0.3, 0); opacity: 0; }
+  20% { opacity: 1; }
+  70% { transform: scale(1.05, 1.12); }
+  100% { transform: scale(1, 1); opacity: 1; }
+}
+
+@keyframes f-peek {
+  from { transform: translateX(-6px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 /* ── Sky ───────────────────────────────────────────────────────────────── */
 
-.drift {
-  animation: drift var(--dur, 90s) ease-in-out infinite alternate;
+/* One-way drift with wrap-around; the frame crops the edges. Speed per layer. */
+.cloud {
+  animation: f-cloud 180s linear infinite;
 }
 
-@keyframes drift {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(var(--dx, 160px));
-  }
+@keyframes f-cloud {
+  from { transform: translateX(-220px); }
+  to { transform: translateX(1420px); }
+}
+
+.sunGlow {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: f-sun 9s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-sun {
+  from { transform: scale(1); opacity: 0.85; }
+  to { transform: scale(1.06); opacity: 1; }
+}
+
+.moonHalo {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: f-moon 12s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-moon {
+  from { transform: scale(1); opacity: 0.08; }
+  to { transform: scale(1.04); opacity: 0.14; }
 }
 
 .twinkle {
-  animation: twinkle 4s ease-in-out infinite;
+  animation: f-twinkle 4s var(--f-ease-ambient) infinite;
 }
 
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+@keyframes f-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
-.fly {
-  animation: fly var(--dur, 38s) linear infinite;
+.shoot {
+  opacity: 0;
+  animation: f-shoot 950ms var(--f-ease-enter) 25s 1 both;
 }
 
-@keyframes fly {
-  from {
-    transform: translateX(-760px);
-  }
-  to {
-    transform: translateX(900px);
-  }
+@keyframes f-shoot {
+  0% { stroke-dashoffset: 30; opacity: 0; }
+  2% { opacity: 0.85; }
+  68% { stroke-dashoffset: -70; opacity: 0.85; }
+  100% { stroke-dashoffset: -70; opacity: 0; }
+}
+
+/* The flock: crosses in ~13 s, then the sky is empty for ~34 s. */
+.flock {
+  animation: f-flock 47s linear -42s infinite;
+}
+
+@keyframes f-flock {
+  0% { transform: translateX(-160px); opacity: 0; }
+  2% { opacity: 1; }
+  26% { opacity: 1; }
+  28%, 100% { transform: translateX(1360px); opacity: 0; }
+}
+
+.flockBob {
+  animation: f-flock-bob 3.1s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-flock-bob {
+  from { transform: translateY(-6px); }
+  to { transform: translateY(6px); }
 }
 
 .flap {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: flap 0.7s ease-in-out infinite;
+  animation: f-flap 0.65s ease-in-out infinite;
 }
 
-@keyframes flap {
-  0%,
-  100% {
-    transform: scaleY(1);
-  }
-  50% {
-    transform: scaleY(-0.6);
-  }
+@keyframes f-flap {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.35); }
 }
 
-/* ── Weather ───────────────────────────────────────────────────────────── */
+/* ── Seasons & weather ─────────────────────────────────────────────────── */
 
-/* Sunshower: rain shows for ~9s, then settles away and the rainbow stays. */
+/* A leaf leaves the canopy and falls like a real one: it rocks side to side,
+   hangs for a moment at each end of the swing and drops through the middle
+   (sine easing on every segment does exactly that). One element per leaf. */
+.fall {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 0 0;
+  animation: f-fall 13s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-fall {
+  0% { transform: translate(calc(var(--lx) - 12px), var(--ly)) rotate(-34deg); opacity: 0; }
+  8% { opacity: 1; }
+  20% { transform: translate(calc(var(--lx) + var(--dx) * 0.2 + 12px), calc(var(--ly) + var(--dy) * 0.2 - 2px)) rotate(36deg); }
+  40% { transform: translate(calc(var(--lx) + var(--dx) * 0.4 - 12px), calc(var(--ly) + var(--dy) * 0.4 - 2px)) rotate(-36deg); }
+  60% { transform: translate(calc(var(--lx) + var(--dx) * 0.6 + 12px), calc(var(--ly) + var(--dy) * 0.6 - 2px)) rotate(34deg); }
+  80% { transform: translate(calc(var(--lx) + var(--dx) * 0.8 - 12px), calc(var(--ly) + var(--dy) * 0.8 - 2px)) rotate(-32deg); }
+  88% { opacity: 1; }
+  100% { transform: translate(calc(var(--lx) + var(--dx) + 10px), calc(var(--ly) + var(--dy))) rotate(28deg); opacity: 0; }
+}
+
+/* Snow: two depths, each a seamless tile sliding one tile-height per loop
+   while drifting gently side to side (one animation per depth). */
+.snowFall {
+  animation: f-snow 7s linear infinite;
+}
+
+@keyframes f-snow {
+  0% { transform: translate(0.0px, 0px); }
+  8.33% { transform: translate(4.0px, 21.7px); }
+  16.67% { transform: translate(6.9px, 43.3px); }
+  25% { transform: translate(8.0px, 65.0px); }
+  33.33% { transform: translate(6.9px, 86.7px); }
+  41.67% { transform: translate(4.0px, 108.3px); }
+  50% { transform: translate(0.0px, 130.0px); }
+  58.33% { transform: translate(-4.0px, 151.7px); }
+  66.67% { transform: translate(-6.9px, 173.3px); }
+  75% { transform: translate(-8.0px, 195.0px); }
+  83.33% { transform: translate(-6.9px, 216.7px); }
+  91.67% { transform: translate(-4.0px, 238.3px); }
+  100% { transform: translate(0px, 260.0px); }
+}
+
+/* Sunshower: a short shower that clears; the rainbow stays. */
 .shower {
   opacity: 0;
-  animation: shower 10s ease-out both;
+  animation: f-shower 6.5s ease-out both;
 }
 
-@keyframes shower {
-  0%,
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+@keyframes f-shower {
+  0%, 68% { opacity: var(--rain-o, 0.75); }
+  100% { opacity: 0; }
 }
 
-.fall {
-  animation: fall 0.9s linear infinite;
+.rain {
+  animation: f-rain 0.9s linear 7;
 }
 
-@keyframes fall {
-  from {
-    transform: translate(10px, -60px);
-  }
-  to {
-    transform: translate(0, 0);
-  }
-}
-
-.snow {
-  animation: snow 9s linear infinite;
-}
-
-@keyframes snow {
-  from {
-    transform: translate(0, -80px);
-  }
-  to {
-    transform: translate(-12px, 0);
-  }
+@keyframes f-rain {
+  from { transform: translate(10px, -60px); }
+  to { transform: translate(0, 0); }
 }
 
 .rainbow {
   opacity: 0.55;
-  animation: rainbow 2.4s ease-out 6s both;
+  animation: f-rainbow 2.4s ease-out 3.6s both;
 }
 
-@keyframes rainbow {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 0.55;
-  }
+@keyframes f-rainbow {
+  from { opacity: 0; }
+  to { opacity: 0.55; }
 }
 
 .mist {
-  animation: drift 26s ease-in-out infinite alternate;
-  --dx: 40px;
+  animation: f-mist 26s var(--f-ease-ambient) infinite alternate;
 }
 
-/* ── Life ──────────────────────────────────────────────────────────────── */
-
-.blink {
-  animation: blink 3.2s ease-in-out infinite;
+@keyframes f-mist {
+  from { transform: translateX(0); }
+  to { transform: translateX(40px); }
 }
 
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 0.15;
-    transform: translate(0, 0);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(3px, -6px);
-  }
+/* ── Evening life ──────────────────────────────────────────────────────── */
+
+/* Fireflies trace slow figure-eights and glow twice per loop (static at 0.6 when still). */
+.firefly {
+  opacity: 0.6;
+}
+
+.ffA {
+  animation: f-ff-a 7s linear infinite;
+}
+
+.ffB {
+  animation: f-ff-b 7s linear infinite;
+}
+
+.ffC {
+  animation: f-ff-c 7s linear infinite;
+}
+
+@keyframes f-ff-a {
+  0% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  6.25% { transform: translate(calc(var(--ax) * 0.38), calc(var(--ay) * 0.71)); opacity: 0.18; }
+  12.5% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * 1.00)); opacity: 0.45; }
+  18.75% { transform: translate(calc(var(--ax) * 0.92), calc(var(--ay) * 0.71)); opacity: 0.83; }
+  25% { transform: translate(calc(var(--ax) * 1.00), calc(var(--ay) * 0.00)); opacity: 1.00; }
+  31.25% { transform: translate(calc(var(--ax) * 0.92), calc(var(--ay) * -0.71)); opacity: 0.83; }
+  37.5% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * -1.00)); opacity: 0.45; }
+  43.75% { transform: translate(calc(var(--ax) * 0.38), calc(var(--ay) * -0.71)); opacity: 0.18; }
+  50% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  56.25% { transform: translate(calc(var(--ax) * -0.38), calc(var(--ay) * 0.71)); opacity: 0.18; }
+  62.5% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * 1.00)); opacity: 0.45; }
+  68.75% { transform: translate(calc(var(--ax) * -0.92), calc(var(--ay) * 0.71)); opacity: 0.83; }
+  75% { transform: translate(calc(var(--ax) * -1.00), calc(var(--ay) * 0.00)); opacity: 1.00; }
+  81.25% { transform: translate(calc(var(--ax) * -0.92), calc(var(--ay) * -0.71)); opacity: 0.83; }
+  87.5% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * -1.00)); opacity: 0.45; }
+  93.75% { transform: translate(calc(var(--ax) * -0.38), calc(var(--ay) * -0.71)); opacity: 0.18; }
+  100% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+}
+
+@keyframes f-ff-b {
+  0% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  6.25% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * -0.38)); opacity: 0.18; }
+  12.5% { transform: translate(calc(var(--ax) * 1.00), calc(var(--ay) * -0.71)); opacity: 0.45; }
+  18.75% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * -0.92)); opacity: 0.83; }
+  25% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * -1.00)); opacity: 1.00; }
+  31.25% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * -0.92)); opacity: 0.83; }
+  37.5% { transform: translate(calc(var(--ax) * -1.00), calc(var(--ay) * -0.71)); opacity: 0.45; }
+  43.75% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * -0.38)); opacity: 0.18; }
+  50% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  56.25% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * 0.38)); opacity: 0.18; }
+  62.5% { transform: translate(calc(var(--ax) * 1.00), calc(var(--ay) * 0.71)); opacity: 0.45; }
+  68.75% { transform: translate(calc(var(--ax) * 0.71), calc(var(--ay) * 0.92)); opacity: 0.83; }
+  75% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 1.00)); opacity: 1.00; }
+  81.25% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * 0.92)); opacity: 0.83; }
+  87.5% { transform: translate(calc(var(--ax) * -1.00), calc(var(--ay) * 0.71)); opacity: 0.45; }
+  93.75% { transform: translate(calc(var(--ax) * -0.71), calc(var(--ay) * 0.38)); opacity: 0.18; }
+  100% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+}
+
+@keyframes f-ff-c {
+  0% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  6.25% { transform: translate(calc(var(--ax) * -0.08), calc(var(--ay) * 0.38)); opacity: 0.18; }
+  12.5% { transform: translate(calc(var(--ax) * -0.29), calc(var(--ay) * 0.71)); opacity: 0.45; }
+  18.75% { transform: translate(calc(var(--ax) * -0.62), calc(var(--ay) * 0.92)); opacity: 0.83; }
+  25% { transform: translate(calc(var(--ax) * -1.00), calc(var(--ay) * 1.00)); opacity: 1.00; }
+  31.25% { transform: translate(calc(var(--ax) * -1.38), calc(var(--ay) * 0.92)); opacity: 0.83; }
+  37.5% { transform: translate(calc(var(--ax) * -1.71), calc(var(--ay) * 0.71)); opacity: 0.45; }
+  43.75% { transform: translate(calc(var(--ax) * -1.92), calc(var(--ay) * 0.38)); opacity: 0.18; }
+  50% { transform: translate(calc(var(--ax) * -2.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+  56.25% { transform: translate(calc(var(--ax) * -1.92), calc(var(--ay) * -0.38)); opacity: 0.18; }
+  62.5% { transform: translate(calc(var(--ax) * -1.71), calc(var(--ay) * -0.71)); opacity: 0.45; }
+  68.75% { transform: translate(calc(var(--ax) * -1.38), calc(var(--ay) * -0.92)); opacity: 0.83; }
+  75% { transform: translate(calc(var(--ax) * -1.00), calc(var(--ay) * -1.00)); opacity: 1.00; }
+  81.25% { transform: translate(calc(var(--ax) * -0.62), calc(var(--ay) * -0.92)); opacity: 0.83; }
+  87.5% { transform: translate(calc(var(--ax) * -0.29), calc(var(--ay) * -0.71)); opacity: 0.45; }
+  93.75% { transform: translate(calc(var(--ax) * -0.08), calc(var(--ay) * -0.38)); opacity: 0.18; }
+  100% { transform: translate(calc(var(--ax) * 0.00), calc(var(--ay) * 0.00)); opacity: 0.12; }
+}
+
+/* ── Residents: each holds still and does one characterful thing ───────────
+   Pivots are in each critter's own units (feet at 0,0), via view-box origins. */
+
+.deerHead,
+.deerEar,
+.owlFace,
+.owlEyes,
+.foxTail,
+.foxBreath,
+.squirrelTail,
+.rabbitHop,
+.rabbitEars,
+.frogThroat,
+.frogHop,
+.otterArm,
+.slothBreath,
+.hedgehogUmbrella {
+  transform-box: view-box;
+}
+
+/* Deer: dips its head to graze, holds, looks back up. Ears flick on their own clock. */
+.deerHead {
+  transform-origin: 10px -24px;
+  animation: f-graze 13s var(--f-ease-ambient) -3s infinite;
+}
+
+@keyframes f-graze {
+  0%, 52%, 100% { transform: rotate(0deg); }
+  59% { transform: rotate(18deg); }
+  66% { transform: rotate(16deg); }
+  70% { transform: rotate(18deg); }
+  79% { transform: rotate(18deg); }
+  84.5% { transform: rotate(0deg); }
+}
+
+.deerEar {
+  transform-origin: 13.5px -40.5px;
+  animation: f-ear 9.7s ease-in-out -6s infinite;
+}
+
+@keyframes f-ear {
+  0%, 90%, 92.5%, 95%, 100% { transform: rotate(0deg); }
+  91.2%, 93.7% { transform: rotate(-14deg); }
+}
+
+/* Owl: slow blinks (the third one double), and a curious head tilt with long holds. */
+.owlEyes {
+  transform-origin: 0 -20px;
+  animation: f-owl-blink 18.9s linear -2s infinite;
+}
+
+@keyframes f-owl-blink {
+  0%, 30%, 30.6%, 63%, 63.6%, 95%, 95.6%, 96.4%, 97%, 100% { transform: scaleY(1); }
+  30.3%, 63.3%, 95.3%, 96.7% { transform: scaleY(0.1); }
+}
+
+.owlFace {
+  transform-origin: 0 -18px;
+  animation: f-owl-tilt 10s var(--f-ease-ambient) -1s infinite;
+}
+
+@keyframes f-owl-tilt {
+  0%, 18%, 52%, 70%, 100% { transform: rotate(0deg); }
+  25%, 45% { transform: rotate(6deg); }
+  76%, 92% { transform: rotate(-5deg); }
+}
+
+/* Fox: a lazy tail swish and quiet breathing. */
+.foxTail {
+  transform-origin: -6px -6px;
+  animation: f-swish 4.7s var(--f-ease-ambient) -1.2s infinite alternate;
+}
+
+@keyframes f-swish {
+  from { transform: rotate(-6deg); }
+  to { transform: rotate(6deg); }
+}
+
+.foxBreath {
+  transform-origin: 0 0;
+  animation: f-breath 5.3s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-breath {
+  from { transform: scale(1, 1); }
+  to { transform: scale(1, 1.015); }
+}
+
+/* Squirrel: two quick tail flicks, then stillness. */
+.squirrelTail {
+  transform-origin: -3px -5px;
+  animation: f-flick 8.1s ease-in-out -4s infinite;
+}
+
+@keyframes f-flick {
+  0%, 88%, 91.4%, 94.8%, 100% { transform: rotate(0deg); }
+  89.7%, 93.1% { transform: rotate(-12deg); }
+}
+
+/* Rabbit: an occasional hop with squash and stretch; ears twitch in between. */
+.rabbitHop {
+  transform-origin: 0 0;
+  animation: f-hop 11s ease-in-out -5s infinite;
+}
+
+@keyframes f-hop {
+  0%, 78%, 92%, 100% { transform: translateY(0) scale(1, 1); }
+  80% { transform: translateY(0) scale(1.08, 0.92); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  83.5% { transform: translateY(-9px) scale(0.95, 1.06); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  87% { transform: translateY(0) scale(1.08, 0.92); }
+  89.5% { transform: translateY(0) scale(0.98, 1.02); }
+}
+
+.rabbitEars {
+  transform-origin: 7px -20px;
+  animation: f-ears 7.3s ease-in-out -2s infinite;
+}
+
+@keyframes f-ears {
+  0%, 90%, 96%, 100% { transform: rotate(0deg); }
+  92% { transform: rotate(-10deg); }
+  94% { transform: rotate(4deg); }
+}
+
+/* Frog: a throat pulse, and a rare little hop. */
+.frogThroat {
+  transform-origin: 0 -2px;
+  animation: f-throat 2.8s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-throat {
+  0%, 55%, 100% { transform: scale(1, 1); }
+  75% { transform: scale(1.12, 1.45); }
+}
+
+.frogHop {
+  transform-origin: 0 0;
+  animation: f-frog-hop 17s ease-in-out -9s infinite;
+}
+
+@keyframes f-frog-hop {
+  0%, 90%, 97.5%, 100% { transform: translateY(0) scale(1, 1); }
+  91.5% { transform: translateY(0) scale(1.1, 0.9); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  93.5% { transform: translateY(-6px) scale(0.95, 1.05); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
+  95.5% { transform: translateY(0) scale(1.08, 0.92); }
+}
+
+/* Otter: waves, then rests. */
+.otterArm {
+  transform-origin: 5px -24px;
+  animation: f-wave 7.9s ease-in-out -2s infinite;
+}
+
+@keyframes f-wave {
+  0%, 78%, 98%, 100% { transform: rotate(0deg); }
+  81.5%, 88.5% { transform: rotate(-14deg); }
+  85%, 92% { transform: rotate(12deg); }
+}
+
+.slothBreath {
+  transform-origin: 0 0;
+  animation: f-sloth 6.5s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-sloth {
+  from { transform: scale(1, 1); }
+  to { transform: scale(1.02, 1.01); }
+}
+
+/* Turtle: the head tucks in now and then, and peeks back out. */
+.turtleHead {
+  animation: f-tuck 14s var(--f-ease-ambient) -6s infinite;
+}
+
+@keyframes f-tuck {
+  0%, 70%, 92%, 100% { transform: translateX(0); }
+  75%, 86% { transform: translateX(-4px); }
+}
+
+/* Hedgehog: the leaf umbrella bobs from the stick. */
+.hedgehogUmbrella {
+  transform-origin: 6px -10px;
+  animation: f-umbrella 5.9s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-umbrella {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(3deg); }
+}
+
+.zzz {
+  animation: f-zzz 3.6s ease-out infinite;
+}
+
+@keyframes f-zzz {
+  0% { opacity: 0; transform: translate(0, 4px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(6px, -12px); }
+}
+
+/* Moth: a soft wingbeat (not a buzz). */
+.flutter {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: f-flutter 0.5s ease-in-out infinite;
+}
+
+@keyframes f-flutter {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(0.5); }
+}
+
+.orbit {
+  animation: f-orbit 6s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-orbit {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, -6px); }
+  50% { transform: translate(4px, 4px); }
+  75% { transform: translate(-8px, -3px); }
+}
+
+/* ── Landmarks ─────────────────────────────────────────────────────────── */
+
+.glow {
+  opacity: calc(var(--f-glow-o) * 0.5);
+  animation: f-glow 4.2s var(--f-ease-ambient) infinite;
+}
+
+@keyframes f-glow {
+  0%, 100% { opacity: calc(var(--f-glow-o) * 0.4); }
+  50% { opacity: calc(var(--f-glow-o) * 0.65); }
+}
+
+.ripple {
+  opacity: 0.4;
 }
 
 .shimmer {
-  animation: shimmer 3.6s ease-in-out infinite;
+  animation: f-shimmer 5s var(--f-ease-ambient) infinite alternate;
 }
 
-@keyframes shimmer {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: translateX(-4px);
-  }
-  50% {
-    opacity: 0.85;
-    transform: translateX(4px);
-  }
+@keyframes f-shimmer {
+  from { opacity: 0.2; transform: translateX(-3px); }
+  to { opacity: 0.6; transform: translateX(3px); }
 }
 
+.pads {
+  animation: f-pads 6s var(--f-ease-ambient) infinite alternate;
+}
+
+@keyframes f-pads {
+  from { transform: translateY(-0.6px); }
+  to { transform: translateY(0.6px); }
+}
+
+/* The stream flows one way. */
+.flow {
+  animation: f-flow 3.2s linear infinite;
+}
+
+@keyframes f-flow {
+  0% { transform: translate(0, 0); opacity: 0; }
+  30% { opacity: 0.6; }
+  70% { opacity: 0.6; }
+  100% { transform: translate(7px, 4px); opacity: 0; }
+}
+
+/* Chimney smoke curls up and drifts with the wind. */
 .smoke {
   transform-box: fill-box;
   transform-origin: 50% 50%;
   opacity: 0;
-  animation: smoke 4.5s ease-out infinite;
+  animation: f-smoke 6s ease-out infinite;
 }
 
-@keyframes smoke {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0) scale(0.5);
-  }
-  20% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(10px, -34px) scale(1.6);
-  }
-}
-
-.hop {
-  animation: hop 3.4s ease-in-out infinite;
-}
-
-@keyframes hop {
-  0%,
-  70%,
-  100% {
-    transform: translateY(0);
-  }
-  80% {
-    transform: translateY(-7px);
-  }
-  90% {
-    transform: translateY(0);
-  }
-}
-
-.bob {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: bob 5s ease-in-out infinite;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  50% {
-    transform: rotate(-3deg);
-  }
-}
-
-.zzz {
-  animation: zzz 3.6s ease-out infinite;
-}
-
-@keyframes zzz {
-  0% {
-    opacity: 0;
-    transform: translate(0, 4px);
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(6px, -12px);
-  }
-}
-
-.flutter {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  animation: flutter 0.35s ease-in-out infinite;
-}
-
-@keyframes flutter {
-  0%,
-  100% {
-    transform: scaleX(1);
-  }
-  50% {
-    transform: scaleX(0.35);
-  }
-}
-
-.orbit {
-  animation: orbit 6s ease-in-out infinite;
-}
-
-@keyframes orbit {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  25% {
-    transform: translate(10px, -6px);
-  }
-  50% {
-    transform: translate(4px, 4px);
-  }
-  75% {
-    transform: translate(-8px, -3px);
-  }
-}
-
-.glow {
-  opacity: calc(var(--f-glow-o) * 0.5);
-  animation: glow 3s ease-in-out infinite;
-}
-
-@keyframes glow {
-  0%,
-  100% {
-    opacity: calc(var(--f-glow-o) * 0.4);
-  }
-  50% {
-    opacity: calc(var(--f-glow-o) * 0.65);
-  }
-}
-
-.ring {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  animation: ring 2.4s ease-in-out infinite;
-}
-
-@keyframes ring {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.06);
-  }
+@keyframes f-smoke {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  15% { opacity: 0.6; }
+  33% { transform: translate(4px, -12px) scale(0.9); }
+  66% { opacity: 0.35; transform: translate(12px, -26px) scale(1.4); }
+  100% { opacity: 0; transform: translate(22px, -38px) scale(1.8); }
 }
 
 /* ── Control ───────────────────────────────────────────────────────────── */
@@ -389,5 +910,20 @@
   .scene,
   .scene * {
     animation: none !important;
+  }
+
+  .snowNear {
+    display: none;
+  }
+
+  /* New trees and status beats still arrive, as a plain 300 ms fade. */
+  .frame:not([data-intro])[data-go] :is([data-grow], [data-change]) :is(.body, .late, .deco, .haloUse, .compost, .sprout, .fogUse, .ghostUse, .logUse) {
+    animation: f-fade 300ms ease-out var(--gd, 0ms) both !important;
+  }
+
+  /* …and without JavaScript, nothing stays hidden. */
+  .frame:not([data-ready]) :is([data-fresh], [data-grow]) :is(.body, .late),
+  .frame[data-intro]:not([data-ready]) .critter {
+    animation: f-fade 1ms 2.5s both !important;
   }
 }

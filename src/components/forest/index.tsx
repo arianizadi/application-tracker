@@ -1,8 +1,9 @@
 /**
  * The living forest. Server-renderable; only <ForestFrame> (tooltips, offscreen
- * pause) ships client JS.
+ * pause, one-time grow-ins) ships client JS.
  *
  *   <Forest state={deriveForest(snapshot, now, user.timeZone, { weeklyGoal })} interactive fit="responsive" />
+ *   <Forest state={demoForest(17)} intro />   // landing: grows in on first view
  *   <MiniForest state={state} className="h-24 w-full rounded-2xl" />
  *   <ForestLegend state={state} />
  */
@@ -29,6 +30,7 @@ export function Forest({
   fit = "natural",
   linkTrees,
   idPrefix = "fx",
+  intro = false,
 }: {
   state: ForestState;
   className?: string;
@@ -39,6 +41,13 @@ export function Forest({
   linkTrees?: boolean;
   /** Unique per page if you render more than one full forest. */
   idPrefix?: string;
+  /**
+   * Landing hero: the grove grows in once when it is first ≥40% on screen
+   * (trees back → front over ~1.6 s, decorations, then the animals from ~1.4 s).
+   * The frame gets `data-go` when the sequence starts, so siblings can sync
+   * (e.g. `:has([data-go])`); everything is simply present under reduced motion.
+   */
+  intro?: boolean;
 }) {
   const frame =
     fit === "natural"
@@ -48,8 +57,8 @@ export function Forest({
         : `overflow-hidden ${className}`;
   const svg = fit === "natural" ? "block h-auto w-full" : "absolute inset-0 block size-full";
   return (
-    <ForestFrame className={frame} interactive={interactive} linkTrees={linkTrees ?? !state.demo}>
-      <ForestScene state={state} prefix={idPrefix} interactive={interactive} className={svg} />
+    <ForestFrame className={frame} interactive={interactive} linkTrees={linkTrees ?? !state.demo} intro={intro}>
+      <ForestScene state={state} prefix={idPrefix} interactive={interactive} intro={intro} className={svg} />
     </ForestFrame>
   );
 }

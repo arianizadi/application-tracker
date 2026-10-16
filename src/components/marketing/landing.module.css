@@ -1,0 +1,71 @@
+/* Landing page motion. Transforms + opacity only; every loop is tiny,
+   desynchronised, and stops under prefers-reduced-motion. */
+
+.stage {
+  --l-enter: var(--ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  --l-ambient: var(--ease-ambient, cubic-bezier(0.37, 0, 0.63, 1));
+}
+
+/* ── Hero: proof cards rise in after the grove has grown, then float ─────── */
+
+/* --in: entrance delay. --bob: float period (7.3 / 8.9 / 10.1 s so the three
+   never line up). The float starts exactly where the entrance ends. */
+.toast {
+  animation:
+    toast-in 640ms var(--l-enter) var(--in, 1.8s) both,
+    toast-bob var(--bob, 8.9s) var(--l-ambient) calc(var(--in, 1.8s) + 640ms) infinite;
+}
+
+/* Hold the sequence until the forest window is actually on screen (phones
+   land below it). Only once JS has armed the stage, so no-JS still plays. */
+.stage[data-armed]:not([data-inview]) .toast,
+.stage[data-offscreen] .toast {
+  animation-play-state: paused;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Alder, perched on the frame, only blinks: no breathing or ear twitch. */
+.perch:global(.cm-anim) :global(.cm-root),
+.perch:global(.cm-anim) :global(.cm-ear) {
+  animation: none;
+}
+
+/* ── Below the fold ──────────────────────────────────────────────────────── */
+
+/* Skip layout + paint for sections until they approach the viewport.
+   --cis is a per-section height estimate so the scrollbar barely shifts. */
+.deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--cis, 720px);
+}
+
+/* Final CTA: Fern's two cheer hops wait until the card is on screen. */
+.stage[data-armed]:not([data-inview]) :global(.cm) * {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

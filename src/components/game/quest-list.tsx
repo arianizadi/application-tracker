@@ -36,7 +36,7 @@ export function QuestList({ quests, className = "" }: { quests: Quest[]; classNa
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper-2 ring-1 ring-inset ring-line" aria-hidden>
                     <div
                       style={{ "--q": `${pct}%` } as CSSProperties}
-                      className="h-full w-full translate-x-[calc(var(--q)-100%)] rounded-full bg-moss transition-transform duration-700 starting:-translate-x-full motion-reduce:transition-none"
+                      className="h-full w-full translate-x-[calc(var(--q)-100%)] rounded-full bg-moss transition-transform delay-150 duration-[900ms] ease-enter starting:-translate-x-full motion-reduce:transition-none"
                     />
                   </div>
                 )}

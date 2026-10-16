@@ -10,7 +10,7 @@ import type { ApplicationStatus } from "@prisma/client";
 
 import type { UserSnapshot } from "@/lib/data/snapshot";
 
-import { MAX_TREES, SLOT_COST, SLOTS, type Layer } from "./layout";
+import { MAX_TREES, SLOT_COST, SLOTS, VIEW_W, type Layer } from "./layout";
 import { clamp, pick, round, unit } from "./random";
 import { localClock, seasonOf, timeOfDayOf, toTime, type Season, type TimeOfDay } from "./time";
 
@@ -64,11 +64,24 @@ export type ForestTree = {
   /** Grew a little faster thanks to a nearby rejection's compost. */
   fertilized: boolean;
   flip: boolean;
+  /** Eligible for ambient wind (the scene still trims this list to its motion budget). */
   sway: boolean;
-  /** Negative animation delay in seconds, to desync the swaying. */
-  swayDelay: number;
-  /** The newest tree (planted ≤3 days ago) plays a grow-in animation. */
-  isNew: boolean;
+  /** 0–1 stable hash; lower = first to keep its wind when the budget is tight. */
+  swayRank: number;
+  /** Which of the three base-sway rhythms this tree uses (all share the 17 s gust cycle). */
+  windVariant: 0 | 1 | 2;
+  /** Base-sway amplitude multiplier (0.75–1). */
+  windAmp: number;
+  /**
+   * Seconds the wind gust takes to reach this tree: gusts roll left → right
+   * across the grove, and the back hills lag a beat behind the front.
+   */
+  gustDelay: number;
+  /**
+   * Planted in the last 7 days. The client grows it in once per device the
+   * first time it is seen (see ForestFrame); everything else renders settled.
+   */
+  fresh: boolean;
 };
 
 export type ForestSeed = { id: string; company: string; role: string; sprouted: boolean };
@@ -308,7 +321,6 @@ export function deriveForest(
   const start = Math.max(0, total - MAX_TREES);
   const newest = planted[total - 1];
   const trees: ForestTree[] = [];
-  let swaying = 0;
   // Each tree's spot comes from its id, not its rank: a weighted draw over the
   // free slots (exponential race, biased to the centre by SLOT_COST), claimed
   // oldest-first. Adding a tree never moves the others, and deleting one only
@@ -350,8 +362,8 @@ export function deriveForest(
       ghost = d < 14;
     }
 
-    const sway = mark !== "log" && slot.layer > 0 && (slot.layer === 2 || unit(app.id, 5) < 0.6) && swaying < 30;
-    if (sway) swaying++;
+    // Every standing tree can catch the wind; the scene decides how many actually move.
+    const sway = mark !== "log";
 
     trees.push({
       id: app.id,
@@ -376,8 +388,11 @@ export function deriveForest(
       fertilized,
       flip: unit(app.id, 4) < 0.5,
       sway,
-      swayDelay: round(-unit(app.id, 6) * 7, 2),
-      isNew: app === newest?.app && daysAgo(plantedAt) <= 3,
+      swayRank: round(unit(app.id, 6), 3),
+      windVariant: Math.floor(unit(app.id, 8) * 3) as 0 | 1 | 2,
+      windAmp: round(0.75 + unit(app.id, 9) * 0.25, 2),
+      gustDelay: round((slot.x / VIEW_W) * 1.6 + (2 - slot.layer) * 0.15, 2),
+      fresh: daysAgo(plantedAt) <= 7,
     });
   }
   // Paint order: back layer first, then by baseline so lower trees overlap higher ones.

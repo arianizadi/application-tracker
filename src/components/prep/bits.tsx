@@ -1,5 +1,5 @@
 // Small server-compatible building blocks shared across prep pages.
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { TrackCode } from "@/content/prep/types";
 import { TRACK_LABELS, TRACK_NAMES } from "@/lib/prep/tracks";
@@ -33,6 +33,7 @@ export function ProgressRing({
   label,
   children,
   tone = "moss",
+  index = 0,
   className = "",
 }: {
   value: number;
@@ -42,11 +43,12 @@ export function ProgressRing({
   label: string;
   children?: ReactNode;
   tone?: "moss" | "sun" | "berry" | "sky";
+  /** Position in a row of rings; each one starts drawing 80 ms after the last. */
+  index?: number;
   /** Extra wrapper classes; use `!` sizes to override `size` at a breakpoint. */
   className?: string;
 }) {
   const r = (100 - stroke) / 2;
-  const c = 2 * Math.PI * r;
   const frac = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
   const color = { moss: "var(--moss)", sun: "var(--sun)", berry: "var(--berry)", sky: "var(--sky)" }[tone];
   return (
@@ -63,8 +65,10 @@ export function ProgressRing({
             stroke={color}
             strokeWidth={stroke}
             strokeLinecap="round"
-            strokeDasharray={`${(c * frac).toFixed(2)} ${c.toFixed(2)}`}
-            className="transition-[stroke-dasharray] duration-700"
+            pathLength={100}
+            strokeDasharray="100"
+            style={{ "--off": (100 - frac * 100).toFixed(2), transitionDelay: `${120 + Math.min(index, 7) * 80}ms` } as CSSProperties}
+            className="[transition:stroke-dashoffset_900ms_var(--ease-enter),opacity_120ms_linear] [stroke-dashoffset:var(--off)] starting:[stroke-dashoffset:100] starting:opacity-0 motion-reduce:transition-none"
           />
         ) : null}
       </svg>

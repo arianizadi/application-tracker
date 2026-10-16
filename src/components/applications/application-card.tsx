@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 
-import { StatusPill } from "@/components/ui/status-pill";
+import { LiveStatusPill as StatusPill } from "@/components/ui/status-pill-live";
 import { dateKeyInZone, dateToKey, daysBetween, daysBetweenKeys, shortDuration } from "@/lib/applications/dates";
 import { isQuiet, lastActivityAt } from "@/lib/applications/filter";
 import { WORK_MODE_LABEL } from "@/lib/applications/schema";
@@ -85,9 +85,11 @@ export function ApplicationCard({
       onDragStart={draggable ? handleDragStart : undefined}
       onDragEnd={draggable ? onDragEnd : undefined}
       aria-busy={temp || undefined}
-      className={`group relative rounded-2xl border bg-card p-3.5 shadow-soft transition-[box-shadow,transform,opacity,border-color] duration-150 ${
+      className={`group relative rounded-2xl border bg-card p-3.5 shadow-soft transition-[box-shadow,translate,scale,rotate,opacity,border-color] duration-200 ease-enter ${
         selected ? "border-moss ring-2 ring-moss/30" : "border-line hover:border-line-strong hover:shadow-lift"
-      } ${dragging ? "rotate-1 opacity-50" : ""} ${temp ? "opacity-70" : ""} ${highlight ? "animate-pop ring-2 ring-leaf/60" : ""} ${
+      } ${dragging ? "rotate-1 scale-[0.98] opacity-45" : !temp && !selectMode ? "md:hover:-translate-y-0.5 md:active:translate-y-0 md:active:scale-[0.99]" : ""} ${
+        temp ? "opacity-70" : ""
+      } ${highlight ? "animate-land ring-2 ring-leaf/60" : ""} ${
         draggable && !temp && !selectMode ? "md:cursor-grab md:active:cursor-grabbing" : ""
       }`}
     >

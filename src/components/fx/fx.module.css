@@ -1,0 +1,186 @@
+/* Celebration card + overlay motion (motion spec §4). Transform/opacity/stroke-dashoffset only.
+   Every animated class has an explicit reduced-motion end state below. */
+
+.card {
+  --fx-ease-enter: var(--ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  --fx-ease-exit: var(--ease-exit, cubic-bezier(0.4, 0, 1, 1));
+  --fx-ease-spring: var(--ease-spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+
+/* Full: rise 420 ms. Calm: fade 240 ms. */
+.rise {
+  animation: fx-rise 420ms var(--fx-ease-enter) both;
+}
+.fade {
+  animation: fx-fade 240ms ease-out both;
+}
+/* Exit: quick, no overshoot. Up on desktop (the stack is at the top), down on phones (docked at the bottom). */
+.leave {
+  animation: fx-leave-down 200ms var(--fx-ease-exit) both;
+  pointer-events: none;
+}
+@media (min-width: 768px) {
+  .leave {
+    animation-name: fx-leave-up;
+  }
+}
+
+@keyframes fx-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fx-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fx-leave-up {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes fx-leave-down {
+  to { opacity: 0; transform: translateY(8px); }
+}
+
+/* Extra lines merged into a card ("+ Badge: …"). */
+.extra {
+  animation: fx-up 320ms var(--fx-ease-enter) both;
+}
+@keyframes fx-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Calm flourish: a small static sprig beside the title. */
+.sprig {
+  animation: fx-fade 300ms ease-out 120ms both;
+}
+
+/* ── Achievement / level-up medallion ─────────────────────────────────────── */
+
+.medal {
+  position: relative;
+  border-radius: 9999px;
+}
+.pop {
+  animation: fx-pop 420ms var(--fx-ease-spring) both;
+}
+@keyframes fx-pop {
+  0% { transform: scale(0.9); }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* Diagonal sheen sweeping once across the disc (clipped by .sheenClip). */
+.sheenClip {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sheen {
+  position: absolute;
+  inset: -10% auto -10% 0;
+  width: 60%;
+  background: linear-gradient(105deg, transparent 0%, rgb(255 255 255 / 0.6) 50%, transparent 100%);
+  transform: translateX(-120%) skewX(-12deg);
+  opacity: 0;
+  animation: fx-sheen 700ms var(--fx-ease-enter) 260ms both;
+}
+@keyframes fx-sheen {
+  0% { transform: translateX(-120%) skewX(-12deg); opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translateX(220%) skewX(-12deg); opacity: 0; }
+}
+
+/* Five four-point sparkles at fixed angles around the medallion. */
+.sparkle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  color: var(--sun);
+  transform: scale(0);
+  animation: fx-sparkle 600ms var(--fx-ease-enter) both;
+}
+@keyframes fx-sparkle {
+  0% { transform: scale(0) rotate(0); opacity: 0; }
+  45% { transform: scale(1) rotate(25deg); opacity: 1; }
+  100% { transform: scale(0) rotate(45deg); opacity: 0; }
+}
+
+/* ── Rejection overlay ────────────────────────────────────────────────────── */
+
+.scrim {
+  animation: fx-fade 240ms ease-out both;
+}
+.scrimLeave {
+  animation: fx-out 220ms var(--fx-ease-exit) both;
+}
+@keyframes fx-out {
+  to { opacity: 0; }
+}
+
+/* Rainbow draws band by band, outer to inner (pathLength=100 on each arc). */
+.band {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: fx-draw 700ms var(--fx-ease-enter) both;
+}
+@keyframes fx-draw {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  6% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.cloudL {
+  animation: fx-cloud-l 400ms var(--fx-ease-enter) both;
+}
+.cloudR {
+  animation: fx-cloud-r 400ms var(--fx-ease-enter) both;
+}
+@keyframes fx-cloud-l {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fx-cloud-r {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Static states (Calm, or rendering without motion). */
+.static .band {
+  stroke-dashoffset: 0;
+  animation: none;
+}
+.static .cloudL,
+.static .cloudR {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .extra,
+  .scrim {
+    animation: fx-fade 200ms ease-out both !important;
+  }
+  .leave,
+  .scrimLeave {
+    animation: fx-out 150ms ease-out both !important;
+  }
+  .pop,
+  .sheen,
+  .sparkle {
+    animation: none !important;
+  }
+  .sheen,
+  .sparkle {
+    opacity: 0;
+  }
+  .band {
+    animation: none !important;
+    stroke-dashoffset: 0;
+  }
+  .cloudL,
+  .cloudR {
+    animation: none !important;
+  }
+}

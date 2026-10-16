@@ -45,7 +45,7 @@ export function GhostBanner({
         </div>
       </div>
       <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
-        <button type="button" onClick={onGhostAll} className="h-11 rounded-full bg-ink px-4 text-sm font-medium text-paper transition-transform active:scale-[0.97]">
+        <button type="button" onClick={onGhostAll} className="press h-11 rounded-full bg-ink px-4 text-sm font-medium text-paper">
           Mark {n === 1 ? "it" : `all ${n}`} ghosted
         </button>
         <button type="button" onClick={onReview} className="h-11 rounded-full border border-line-strong bg-card px-4 text-sm font-medium hover:bg-paper-2">

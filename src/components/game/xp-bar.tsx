@@ -48,7 +48,7 @@ export function XpBar({
       >
         <div
           style={{ "--xp": `${pct}%` } as CSSProperties}
-          className="relative h-full w-full translate-x-[calc(var(--xp)-100%)] rounded-full bg-gradient-to-r from-moss to-leaf transition-transform duration-1000 ease-out starting:-translate-x-full motion-reduce:transition-none"
+          className="relative h-full w-full translate-x-[calc(var(--xp)-100%)] rounded-full bg-gradient-to-r from-moss to-leaf transition-transform delay-150 duration-[900ms] ease-enter starting:-translate-x-full motion-reduce:transition-none"
         >
           <span aria-hidden className="absolute inset-y-0.5 left-1.5 right-1.5 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
         </div>

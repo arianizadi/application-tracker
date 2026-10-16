@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
+import { MotionGate } from "@/components/fx/motion-gate";
 import { ThemeScript } from "@/components/theme";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full bg-paper text-ink">
         <ToastProvider>{children}</ToastProvider>
+        <MotionGate />
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ export {
   type CelebrationKind,
 } from "./celebrate";
 export { FireflyBurst, LeafConfetti, fireflyBurst, leafConfetti } from "./bursts";
+export { MotionGate } from "./motion-gate";
 export { RainThenRainbow } from "./rain-rainbow";
 export { SeedPop } from "./seed-pop";
 export {
@@ -18,4 +19,4 @@ export {
   useReducedMotion,
   type CelebrationIntensity,
 } from "./motion";
-export type { LeafPalette, Origin } from "./particles";
+export { currentSeason, seasonalPalette, type LeafPalette, type Origin, type Season } from "./particles";

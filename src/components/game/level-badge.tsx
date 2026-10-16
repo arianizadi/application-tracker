@@ -39,7 +39,7 @@ export function LevelBadge({
               pathLength={100}
               strokeDasharray="100"
               style={{ "--off": 100 - pct } as CSSProperties}
-              className="transition-[stroke-dashoffset] duration-1000 ease-out [stroke-dashoffset:var(--off)] starting:[stroke-dashoffset:100] motion-reduce:transition-none"
+              className="[transition:stroke-dashoffset_900ms_var(--ease-enter)_150ms,opacity_120ms_linear_150ms] [stroke-dashoffset:var(--off)] starting:[stroke-dashoffset:100] starting:opacity-0 motion-reduce:transition-none"
             />
           ) : null}
         </svg>

@@ -97,6 +97,8 @@ const CRITTERS = {
   sky: "#7fbfdc",
   berry: "#a8436b",
   lavender: "#a9a3c9",
+  blossom: "#f2b8c6",
+  rust: "#b8573a",
   amber: "#e8a33d",
   mushroom: "#d9634a",
   mushroom2: "#e8b56a",

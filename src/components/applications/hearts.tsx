@@ -1,9 +1,17 @@
 "use client";
 
-import { useRef, type KeyboardEvent } from "react";
+import { useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
 const HEART = "M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z";
 const LABELS = ["Meh", "Sure", "Into it", "Really want it", "Dream role"];
+const SPARK = "M0 -4Q.6 -.6 4 0Q.6 .6 0 4Q-.6 .6 -4 0Q-.6 -.6 0 -4Z";
+/** Four sparkles puffing out diagonally from the fifth heart. */
+const SPARKS = [
+  { dx: "-15px", dy: "-13px", fill: "var(--sun)" },
+  { dx: "15px", dy: "-14px", fill: "var(--berry)" },
+  { dx: "16px", dy: "11px", fill: "var(--sun)" },
+  { dx: "-14px", dy: "12px", fill: "var(--berry)" },
+];
 
 function Heart({ filled, className }: { filled: boolean; className: string }) {
   return (
@@ -47,6 +55,9 @@ export function HeartsInput({
   describedBy?: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  // "Dream role" gets a small sparkle puff (500 ms) when you pick it, never on load.
+  const [seen, setSeen] = useState({ value, puff: 0 });
+  if (seen.value !== value) setSeen({ value, puff: value === 5 ? seen.puff + 1 : seen.puff });
 
   function onKey(e: KeyboardEvent<HTMLButtonElement>, n: number) {
     let next = n;
@@ -74,9 +85,23 @@ export function HeartsInput({
             tabIndex={value === n ? 0 : -1}
             onClick={() => onChange(n)}
             onKeyDown={(e) => onKey(e, n)}
-            className="group flex size-11 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95"
+            className="group relative flex size-11 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95"
           >
             <Heart filled={n <= value} className={`size-7 transition-transform ${n === value ? "animate-pop" : ""}`} />
+            {n === 5 && seen.puff > 0 && value === 5 ? (
+              <span key={seen.puff} aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center">
+                {SPARKS.map((p, i) => (
+                  <svg
+                    key={i}
+                    viewBox="-4 -4 8 8"
+                    className="size-2.5 animate-spark-out [grid-area:1/1]"
+                    style={{ "--dx": p.dx, "--dy": p.dy, animationDelay: `${60 + i * 40}ms` } as CSSProperties}
+                  >
+                    <path d={SPARK} fill={p.fill} />
+                  </svg>
+                ))}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

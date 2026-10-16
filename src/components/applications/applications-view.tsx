@@ -4,6 +4,7 @@ import type { ApplicationStatus, WorkMode } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 
+import { FirstPlanting } from "@/components/art";
 import { useCelebrate } from "@/components/fx";
 import { Mascot } from "@/components/mascots";
 import { ButtonLink } from "@/components/ui/button";
@@ -317,9 +318,9 @@ export function ApplicationsView({
       <QuickAdd
         companyRef={quickRef}
         onOptimisticAdd={(item) => applyOptimistic({ type: "add", item })}
-        onAdded={(item) => {
+        onAdded={(item, plantButton) => {
           setHighlightId(item.id);
-          if (item.status !== "WISHLIST") celebrate("plant", { quiet: true });
+          if (item.status !== "WISHLIST") celebrate("plant", { quiet: true, origin: plantButton ?? undefined });
         }}
       />
 
@@ -495,7 +496,7 @@ export function ApplicationsView({
 
           {visible.length === 0 ? (
             <EmptyState
-              art={<Mascot name="acorn" mood="think" className="size-24" title="Acorn the squirrel, looking behind a stump" />}
+              art={<Mascot name="acorn" mood="think" enter className="size-24" title="Acorn the squirrel, looking behind a stump" />}
               title="Nothing on this trail"
               action={
                 <button type="button" onClick={clearFilters} className="h-11 rounded-full border border-line-strong bg-card px-5 text-sm font-medium hover:bg-paper-2">
@@ -513,7 +514,7 @@ export function ApplicationsView({
         </>
       ) : (
         <EmptyState
-          art={<Mascot name="fern" mood="happy" className="size-28" title="Fern the frog beside an empty planting bed" />}
+          art={<FirstPlanting title="Fern the frog beside an empty planting bed" />}
           title="Every forest starts somewhere"
           action={
             <ButtonLink href="/applications/new" variant="secondary">

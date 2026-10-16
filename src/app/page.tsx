@@ -13,6 +13,8 @@ import {
   StatsMock,
 } from "@/components/marketing/feature-mocks";
 import { GoodbyeBanner } from "@/components/marketing/goodbye-banner";
+import { InView } from "@/components/marketing/in-view";
+import styles from "@/components/marketing/landing.module.css";
 import { PublicFooter } from "@/components/marketing/public-footer";
 import { PublicHeader } from "@/components/marketing/public-header";
 import { Mascot, MASCOTS, type MascotName } from "@/components/mascots";
@@ -156,9 +158,33 @@ function SectionHeading({ eyebrow, title, children }: { eyebrow: string; title: 
   );
 }
 
-function Toast({ mascot, title, body, className }: { mascot: MascotName; title: string; body: string; className: string }) {
+/**
+ * A floating "proof" card over the hero forest. Rises in once the grove has grown
+ * (`enter`, seconds after the forest is on screen), then floats 3px on its own
+ * period (`bob`) so the three never move in step. No backdrop blur: it would be
+ * re-rasterised every frame while the card floats.
+ */
+function Toast({
+  mascot,
+  title,
+  body,
+  className,
+  enter,
+  bob,
+}: {
+  mascot: MascotName;
+  title: string;
+  body: string;
+  className: string;
+  enter: number;
+  bob: number;
+}) {
   return (
-    <div aria-hidden className={`absolute flex max-w-[15rem] items-center gap-3 rounded-2xl border border-line bg-card/95 p-2.5 pr-4 shadow-lift backdrop-blur ${className}`}>
+    <div
+      aria-hidden
+      className={`${styles.toast} absolute flex max-w-[15rem] items-center gap-3 rounded-2xl border border-line bg-card p-2.5 pr-4 shadow-lift ${className}`}
+      style={{ "--in": `${enter}s`, "--bob": `${bob}s` } as React.CSSProperties}
+    >
       <Mascot name={mascot} mood="happy" className="size-11 shrink-0" animate={false} />
       <div className="min-w-0">
         <p className="text-sm font-semibold leading-tight">{title}</p>
@@ -179,70 +205,77 @@ export default function Landing() {
       <main id="main" className="overflow-x-clip">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <section className="grain relative">
-          <div className="mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6 sm:pt-20 lg:px-10 lg:pt-24">
+          <div className="mx-auto max-w-6xl px-4 pb-8 pt-12 sm:px-6 sm:pt-16 lg:px-10 lg:pb-6 lg:pt-12">
             <p className="inline-flex animate-rise items-center gap-2 rounded-full border border-line bg-card/70 px-3 py-1 text-xs font-medium text-ink-soft">
               <span aria-hidden className="size-1.5 rounded-full bg-leaf" />
               The internship tracker that&apos;s on your side
             </p>
             <h1
-              className="mt-6 animate-rise text-[2.8rem] font-semibold leading-[0.95] tracking-[-0.03em] sm:text-7xl lg:text-[6.5rem]"
+              className="mt-6 animate-rise text-[2.8rem] font-semibold leading-[0.95] tracking-[-0.03em] sm:text-7xl lg:mt-5 lg:text-[6rem]"
               style={{ fontVariationSettings: '"SOFT" 100, "WONK" 1', animationDelay: "60ms" }}
             >
               Every application
               <br />
               <span className="italic text-moss">plants a tree.</span>
             </h1>
-            <div className="mt-8 flex max-w-2xl flex-col gap-8">
-              <p className="animate-rise text-lg leading-relaxed text-ink-soft sm:text-xl" style={{ animationDelay: "120ms" }}>
+            <div className="mt-8 flex max-w-2xl flex-col gap-8 lg:mt-7 lg:max-w-none lg:flex-row lg:items-end lg:justify-between lg:gap-14">
+              <p className="animate-rise text-lg leading-relaxed text-ink-soft sm:text-xl lg:max-w-[38rem] lg:text-lg" style={{ animationDelay: "120ms" }}>
                 Applying for internships is a lot. Canopy makes the boring parts fast and the progress visible: log an
                 application in seconds, keep your resume versions straight, prep for interviews, and watch a forest grow from
                 your effort. Even the rejections become compost.
               </p>
-              <div className="flex animate-rise flex-col gap-3 sm:flex-row" style={{ animationDelay: "180ms" }}>
-                <ButtonLink href="/signup" size="lg">
-                  Start growing — it&apos;s free
-                </ButtonLink>
-                <ButtonLink href="/login" variant="secondary" size="lg">
-                  Sign in
-                </ButtonLink>
+              <div className="flex shrink-0 animate-rise flex-col gap-4" style={{ animationDelay: "180ms" }}>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <ButtonLink href="/signup" size="lg">
+                    Start growing — it&apos;s free
+                  </ButtonLink>
+                  <ButtonLink href="/login" variant="secondary" size="lg">
+                    Sign in
+                  </ButtonLink>
+                </div>
+                <p className="text-sm text-muted">No credit card. No streak guilt. Export everything, anytime.</p>
               </div>
             </div>
-            <p className="mt-4 text-sm text-muted">No credit card. No streak guilt. Export everything, anytime.</p>
           </div>
 
-          {/* Forest window */}
-          <div className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-10">
-            <div className="relative">
+          {/* Forest window: the grove grows in once it is on screen, then the proof cards rise. */}
+          <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:px-10 lg:pt-4">
+            <InView className={`${styles.stage} relative`}>
               <div className="relative overflow-hidden rounded-[2rem] border border-line bg-sky-soft shadow-lift">
-                <div className="relative left-1/2 w-[175%] -translate-x-1/2 sm:w-[125%] lg:w-full">
-                  <Forest state={demoForest(17)} className="block h-auto w-full" />
-                </div>
+                {/* Phones crop the sides around the clearing; wide screens trim a band of empty sky. */}
+                <Forest state={demoForest(17)} intro fit="fill" idPrefix="land" className="aspect-[5/4] sm:aspect-[2/1] lg:aspect-[1200/500]" />
               </div>
               <Mascot
                 name="alder"
                 mood="idle"
-                className="absolute -top-10 right-6 size-20 drop-shadow-sm sm:-top-14 sm:right-12 sm:size-28"
+                className={`${styles.perch} absolute -top-10 right-6 size-20 drop-shadow-sm sm:-top-14 sm:right-12 sm:size-28`}
                 title="Alder the owl, perched on the forest frame"
               />
               <Toast
                 mascot="clover"
                 title={`Planted! +${XP.added + XP.submitted} XP`}
                 body="Security Analyst Intern · Hollow Oak Bank"
-                className="-bottom-6 left-3 animate-float sm:left-8"
+                className="-bottom-6 left-3 sm:left-8"
+                enter={1.8}
+                bob={7.3}
               />
               <Toast
                 mascot="miso"
                 title="An interview!"
                 body="They want to meet the person behind the PDF."
-                className="right-8 top-10 hidden animate-float md:flex [animation-delay:1.2s]"
+                className="left-[30%] top-8 hidden md:flex"
+                enter={2}
+                bob={8.9}
               />
               <Toast
                 mascot="prickle"
                 title="A mushroom appeared"
                 body="That one stung. The tree stays."
-                className="bottom-10 right-1/3 hidden animate-float lg:flex [animation-delay:2.4s]"
+                className="bottom-12 right-8 hidden lg:flex"
+                enter={2.2}
+                bob={10.1}
               />
-            </div>
+            </InView>
           </div>
         </section>
 
@@ -261,18 +294,18 @@ export default function Landing() {
         </section>
 
         {/* ── How it works ─────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <section className={`${styles.deferred} mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-10`} style={{ "--cis": "760px" } as React.CSSProperties}>
           <SectionHeading eyebrow="How it works" title="Three steps. Zero spreadsheets.">
             You handle the applying. Canopy remembers the work.
           </SectionHeading>
           <ol className="mt-12 grid gap-5 md:grid-cols-3">
             {STEPS.map((step) => (
-              <li key={step.n} className="relative overflow-hidden rounded-3xl border border-line bg-card p-6 shadow-soft sm:p-7">
+              <li key={step.n} className={`group relative overflow-hidden rounded-3xl border border-line bg-card p-6 shadow-soft sm:p-7`}>
                 <div className="flex items-start justify-between">
                   <span className="font-display text-6xl font-semibold leading-none text-line-strong tabular" aria-hidden>
                     {step.n}
                   </span>
-                  <Mascot name={step.mascot} mood="happy" className="size-20 -mr-1 -mt-1" />
+                  <Mascot name={step.mascot} mood="happy" animate="hover" className="size-20 -mr-1 -mt-1" />
                 </div>
                 <h3 className="mt-6 text-2xl font-semibold">
                   <span className="sr-only">Step {step.n}: </span>
@@ -285,19 +318,19 @@ export default function Landing() {
         </section>
 
         {/* ── Features ─────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-10">
+        <section className={`${styles.deferred} mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-10`} style={{ "--cis": "1600px" } as React.CSSProperties}>
           <SectionHeading eyebrow="What's inside" title={<>Everything the hunt needs, <span className="italic text-moss">nothing it doesn&apos;t.</span></>}>
             Built with cybersecurity students in mind, and useful for any internship search.
           </SectionHeading>
           <div className="mt-12 grid gap-5 lg:grid-cols-12">
             {FEATURES.map((f) => (
-              <article key={f.eyebrow} className={`flex flex-col gap-6 rounded-3xl border border-line bg-card p-6 shadow-soft sm:p-7 ${f.span}`}>
+              <article key={f.eyebrow} className={`group flex flex-col gap-6 rounded-3xl border border-line bg-card p-6 shadow-soft sm:p-7 ${f.span}`}>
                 <div className="flex items-start gap-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">{f.eyebrow}</p>
                     <h3 className="mt-2 text-2xl font-semibold leading-tight">{f.title}</h3>
                   </div>
-                  <Mascot name={f.mascot} mood="idle" className="size-16 shrink-0" />
+                  <Mascot name={f.mascot} mood="idle" animate="hover" className="size-16 shrink-0" />
                 </div>
                 <p className="-mt-2 leading-relaxed text-ink-soft">{f.body}</p>
                 <div className="mt-auto">{f.mock}</div>
@@ -307,7 +340,7 @@ export default function Landing() {
         </section>
 
         {/* ── Compost ──────────────────────────────────────────────────────── */}
-        <section className="border-y border-line bg-paper-2/70">
+        <section className={`${styles.deferred} border-y border-line bg-paper-2/70`} style={{ "--cis": "720px" } as React.CSSProperties}>
           <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-2 lg:px-10">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-coral">About rejections</p>
@@ -339,7 +372,7 @@ export default function Landing() {
         </section>
 
         {/* ── The crew ─────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-10">
+        <section className={`${styles.deferred} mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-10`} style={{ "--cis": "1100px" } as React.CSSProperties}>
           <SectionHeading eyebrow="Meet the crew" title="Twelve small friends, each with one job.">
             They show up at the right moments with a useful nudge or a tiny celebration, then get out of your way.
           </SectionHeading>
@@ -347,8 +380,13 @@ export default function Landing() {
             {CREW_ORDER.map((key) => {
               const m = MASCOTS[key];
               return (
-                <li key={key} className="group flex flex-col rounded-3xl border border-line bg-card p-4 shadow-soft sm:p-5">
-                  <Mascot name={key} mood="idle" className="size-20 self-center transition-transform duration-300 group-hover:-translate-y-1 sm:size-24" />
+                <li key={key} className={`group flex flex-col rounded-3xl border border-line bg-card p-4 shadow-soft sm:p-5`}>
+                  <Mascot
+                    name={key}
+                    mood="idle"
+                    animate="hover"
+                    className="size-20 self-center transition-[translate] duration-300 ease-enter group-hover:-translate-y-1 sm:size-24"
+                  />
                   <p className="mt-3 font-display text-lg font-semibold leading-tight">{m.name}</p>
                   <p className="text-xs capitalize text-muted">
                     {m.species} · {m.role}
@@ -361,7 +399,7 @@ export default function Landing() {
         </section>
 
         {/* ── Privacy ──────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-10">
+        <section className={`${styles.deferred} mx-auto max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28 lg:px-10`} style={{ "--cis": "720px" } as React.CSSProperties}>
           <SectionHeading eyebrow="Privacy & security" title="Your job search is nobody else's business.">
             Designed with a security mindset from the first line of code. Here&apos;s the short version.
           </SectionHeading>
@@ -383,7 +421,12 @@ export default function Landing() {
         </section>
 
         {/* ── Final CTA ────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:px-10">
+        <InView
+          as="section"
+          threshold={0.5}
+          className={`${styles.deferred} ${styles.stage} mx-auto max-w-6xl px-4 pb-24 sm:px-6 lg:px-10`}
+          style={{ "--cis": "620px" } as React.CSSProperties}
+        >
           <div className="relative overflow-hidden rounded-[2.25rem] bg-moss px-6 py-14 text-paper shadow-lift sm:px-12 sm:py-20">
             <div aria-hidden className="absolute -right-10 -top-10 size-56 rounded-full bg-leaf/30 blur-2xl" />
             <div aria-hidden className="absolute -bottom-16 left-1/3 size-64 rounded-full bg-sun/20 blur-3xl" />
@@ -410,7 +453,7 @@ export default function Landing() {
               <Mascot name="fern" mood="cheer" className="mx-auto size-36 sm:size-44" title="Fern the frog, cheering you on" />
             </div>
           </div>
-        </section>
+        </InView>
       </main>
       <PublicFooter />
     </>

@@ -4,8 +4,9 @@ import type { ComponentProps } from "react";
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "sun";
 type Size = "sm" | "md" | "lg" | "icon";
 
+// `press`: 90 ms squash in, 220 ms spring back out; hover only changes color (globals.css).
 const base =
-  "inline-flex select-none items-center justify-center gap-2 rounded-full font-medium transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50";
+  "press inline-flex select-none items-center justify-center gap-2 rounded-full font-medium disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<Variant, string> = {
   primary: "bg-moss text-paper shadow-soft hover:bg-moss-strong",

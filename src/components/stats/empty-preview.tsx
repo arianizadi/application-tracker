@@ -1,3 +1,4 @@
+import { ArtFade } from "@/components/art";
 import { Mascot } from "@/components/mascots";
 import { StatsDashboard } from "@/components/stats/stats-dashboard";
 import { ButtonLink } from "@/components/ui/button";
@@ -17,8 +18,8 @@ export function StatsEmptyPreview({ submitted, wishlist, now, timeZone, track }:
       <section className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-card via-card to-moss-soft p-6 shadow-soft sm:p-8">
         <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
           <div className="flex shrink-0 -space-x-4">
-            <Mascot name="alder" mood="happy" className="size-20 sm:size-24" title="Alder the owl" />
-            <Mascot name="tuck" mood="idle" className="size-16 translate-y-3 sm:size-20" />
+            <Mascot name="alder" mood="happy" enter className="size-20 sm:size-24" title="Alder the owl" />
+            <Mascot name="tuck" mood="idle" enter className="size-16 translate-y-3 sm:size-20" />
           </div>
           <div className="min-w-0">
             <h2 className="text-2xl font-semibold sm:text-3xl">Your stats are still seedlings</h2>
@@ -41,7 +42,7 @@ export function StatsEmptyPreview({ submitted, wishlist, now, timeZone, track }:
         </div>
       </section>
 
-      <div className="relative">
+      <ArtFade delay={220} className="relative">
         <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
           <span aria-hidden className="h-px flex-1 bg-line" />
           Preview with sample data
@@ -54,7 +55,7 @@ export function StatsEmptyPreview({ submitted, wishlist, now, timeZone, track }:
         >
           <StatsDashboard stats={sample} track={track} preview />
         </div>
-      </div>
+      </ArtFade>
     </div>
   );
 }

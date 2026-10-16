@@ -67,6 +67,23 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
   const knownInDeck = deck.filter((id) => states[id] === "known").length;
   const knownTotal = FLASHCARDS.filter((f) => states[f.id] === "known").length;
 
+  // A new card arrives from 12 px to the right with a fade (260 ms). Any flip
+  // still in flight is finished first, so the next card's answer never shows
+  // while the old card turns back over.
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLSpanElement>(null);
+  const shownCard = useRef(card?.id);
+  useEffect(() => {
+    if (shownCard.current === card?.id) return;
+    shownCard.current = card?.id;
+    cardRef.current?.getAnimations().forEach((a) => a.finish());
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    sceneRef.current?.animate([{ opacity: 0, transform: "translateX(12px)" }, { opacity: 1, transform: "none" }], {
+      duration: 260,
+      easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+    });
+  }, [card?.id]);
+
   /* ── Debounced, optimistic saving ─────────────────────────────────────── */
   const queue = useRef(new Map<string, { next: FlashcardState; prev: FlashcardState | undefined }>());
   const timer = useRef<number | undefined>(undefined);
@@ -297,7 +314,7 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
 
       {card ? (
         <>
-          <div className={`${styles.scene} mx-auto w-full max-w-2xl`}>
+          <div ref={sceneRef} className={`${styles.scene} mx-auto w-full max-w-2xl`}>
             <div
               className={`${styles.drag} h-[23rem] sm:h-[21rem]`}
               style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 30}deg)` : undefined, transition: dx ? "none" : "transform 220ms ease-out" }}
@@ -318,7 +335,7 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
                 }}
                 className="block size-full rounded-[2rem] text-left focus-visible:outline-offset-4"
               >
-                <span className={styles.card} data-flipped={flipped}>
+                <span ref={cardRef} className={styles.card} data-flipped={flipped}>
                   <span
                     aria-hidden={flipped}
                     className={`${styles.face} ${styles.front} flex flex-col rounded-[2rem] border border-line bg-card p-6 shadow-lift sm:p-8`}

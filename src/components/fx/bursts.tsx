@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, type RefObject } from "react";
 
-import { prefersReducedMotion } from "./motion";
+import { getCelebrationIntensity, prefersReducedMotion } from "./motion";
 import {
   runFx,
   spawnFireflies,
@@ -17,31 +17,34 @@ type OriginProp = Origin | RefObject<Element | null> | null | undefined;
 
 const toOrigin = (o: OriginProp) => (o && "current" in o ? o.current : o);
 
+/** Particles only at Full intensity and without OS reduced motion (§4.8). */
+const particlesAllowed = () => !prefersReducedMotion() && getCelebrationIntensity() === "full";
+
 // ── Imperative API (call from any event handler) ──────────────────────────────
 
-/** Leaf + petal burst. No-op under reduced motion. Returns a cancel function. */
+/** Leaf + petal puff. No-op under reduced motion or Calm/Off. Returns a cancel function. */
 export function leafConfetti(options: LeafOptions = {}): () => void {
-  if (prefersReducedMotion()) return () => {};
+  if (!particlesAllowed()) return () => {};
   return runFx(spawnLeaves(options));
 }
 
-/** Warm firefly swarm. No-op under reduced motion. Returns a cancel function. */
+/** A few warm fireflies drifting up. No-op under reduced motion or Calm/Off. Returns a cancel function. */
 export function fireflyBurst(options: FireflyOptions = {}): () => void {
-  if (prefersReducedMotion()) return () => {};
+  if (!particlesAllowed()) return () => {};
   return runFx(spawnFireflies(options));
 }
 
 // ── Declarative components (render nothing; play when `fire` changes) ─────────
 
 /**
- * <LeafConfetti fire={count} /> plays a burst of leaves and petals every time `fire` changes
+ * <LeafConfetti fire={count} /> plays a small puff of leaves and petals every time `fire` changes
  * to a truthy value (also on mount if truthy). `origin` is viewport coords or a ref to an
  * element to burst from (defaults to the middle of the screen).
  */
 export function LeafConfetti({
   fire,
   origin,
-  count = 40,
+  count = 14,
   palette = "leaves",
   power = 1,
   onDone,
@@ -54,12 +57,12 @@ export function LeafConfetti({
   onDone?: () => void;
 }) {
   const play = useEffectEvent(() => {
-    if (prefersReducedMotion()) {
+    if (!particlesAllowed()) {
       onDone?.();
       return () => {};
     }
     const cancel = runFx(spawnLeaves({ origin: toOrigin(origin), count, palette, power }));
-    const t = window.setTimeout(() => onDone?.(), 2300);
+    const t = window.setTimeout(() => onDone?.(), 2400);
     return () => {
       window.clearTimeout(t);
       cancel();
@@ -72,11 +75,11 @@ export function LeafConfetti({
   return null;
 }
 
-/** <FireflyBurst fire={n} /> — a glowing swarm for offers and big moments. */
+/** <FireflyBurst fire={n} /> — a few rising fireflies for offers and big moments. */
 export function FireflyBurst({
   fire,
   origin,
-  count = 26,
+  count = 10,
   onDone,
 }: {
   fire: unknown;
@@ -85,12 +88,12 @@ export function FireflyBurst({
   onDone?: () => void;
 }) {
   const play = useEffectEvent(() => {
-    if (prefersReducedMotion()) {
+    if (!particlesAllowed()) {
       onDone?.();
       return () => {};
     }
     const cancel = runFx(spawnFireflies({ origin: toOrigin(origin), count }));
-    const t = window.setTimeout(() => onDone?.(), 3600);
+    const t = window.setTimeout(() => onDone?.(), 2500);
     return () => {
       window.clearTimeout(t);
       cancel();

@@ -65,16 +65,11 @@ export function CelebrationClient({
     // layout, and keys are de-duplicated above, so a StrictMode re-run can't double up.
     queue.forEach((t, i) => {
       window.setTimeout(() => {
-        // The mascot card carries the words for the first one; later ones stay as toasts
-        // with quiet particles so a burst of unlocks doesn't stack cards on screen. Phones
-        // show one card at a time (newest on top), so they get cards in sequence instead of
-        // a toast at the bottom competing with the card at the top.
-        const narrow = window.matchMedia("(max-width: 767px)").matches;
-        if ((i === 0 || narrow) && getCelebrationIntensity() !== "off") celebrate(t.kind, { title: t.title, body: t.body });
-        else {
-          toast({ title: t.title, body: t.body, tone: "celebrate" });
-          celebrate(t.kind, { quiet: true });
-        }
+        // One voice at a time: the celebration layer shows one card, merges unlocks that land
+        // while it's up into it as a line, and queues the rest. With celebrations Off the
+        // words still arrive, as quiet toasts.
+        if (getCelebrationIntensity() !== "off") celebrate(t.kind, { title: t.title, body: t.body });
+        else toast({ title: t.title, body: t.body, tone: "celebrate" });
       }, 500 + i * 1400);
     });
 

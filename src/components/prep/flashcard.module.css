@@ -22,6 +22,22 @@
 
 .card[data-flipped="true"] {
   transform: rotateY(180deg);
+  animation: lift-a 560ms cubic-bezier(0.37, 0, 0.63, 1);
+}
+
+/* Mid-flip lift: the card rises 2% toward you as it turns edge-on. Uses the
+   independent `scale` property so it composes with the rotateY transition.
+   Two identical keyframes so each flip direction restarts it. */
+.card[data-flipped="false"] {
+  animation: lift-b 560ms cubic-bezier(0.37, 0, 0.63, 1);
+}
+
+@keyframes lift-a {
+  50% { scale: 1.02; }
+}
+
+@keyframes lift-b {
+  50% { scale: 1.02; }
 }
 
 .face {
@@ -37,9 +53,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .card,
-  .card[data-flipped="true"] {
+  .card[data-flipped="true"],
+  .card[data-flipped="false"] {
     transform: none;
     transition: none;
+    animation: none;
   }
 
   .face {
