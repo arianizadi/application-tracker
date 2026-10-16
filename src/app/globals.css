@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* `dark:` follows the theme toggle (data-theme) and falls back to the OS setting on "Auto". */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 /* ── Design tokens ────────────────────────────────────────────────────────────
    Light: "dawn meadow" — warm paper, moss, sun. Dark: "moonlit forest".
    Components use the Tailwind color names below (bg-paper, text-ink, ...). */

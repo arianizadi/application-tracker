@@ -1,0 +1,393 @@
+/* Ambient motion for the forest. Transforms + opacity only; everything stops
+   under prefers-reduced-motion and while the scene is offscreen. */
+
+.scene {
+  --f-dim: 0;
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-theme="dark"] .scene {
+  --f-dim: 0.16;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .scene {
+    --f-dim: 0.16;
+  }
+}
+
+.dim {
+  opacity: var(--f-dim);
+  pointer-events: none;
+}
+
+.halo {
+  opacity: calc(var(--f-glow-o) * 0.5);
+}
+
+/* ── Trees ─────────────────────────────────────────────────────────────── */
+
+.sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: sway 7s ease-in-out infinite;
+}
+
+.grow {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: grow 1.2s cubic-bezier(0.34, 1.4, 0.64, 1) 0.3s both;
+}
+
+.tree {
+  cursor: pointer;
+  outline: none;
+}
+
+.tree:focus-visible,
+.tree[data-active] {
+  filter: drop-shadow(0 0 2px var(--focus)) drop-shadow(0 0 1px var(--focus));
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-1.2deg);
+  }
+  50% {
+    transform: rotate(1.2deg);
+  }
+}
+
+@keyframes grow {
+  0% {
+    transform: scale(0.2, 0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 1;
+  }
+}
+
+/* ── Sky ───────────────────────────────────────────────────────────────── */
+
+.drift {
+  animation: drift var(--dur, 90s) ease-in-out infinite alternate;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--dx, 160px));
+  }
+}
+
+.twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.fly {
+  animation: fly var(--dur, 38s) linear infinite;
+}
+
+@keyframes fly {
+  from {
+    transform: translateX(-760px);
+  }
+  to {
+    transform: translateX(900px);
+  }
+}
+
+.flap {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flap 0.7s ease-in-out infinite;
+}
+
+@keyframes flap {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(-0.6);
+  }
+}
+
+/* ── Weather ───────────────────────────────────────────────────────────── */
+
+/* Sunshower: rain shows for ~9s, then settles away and the rainbow stays. */
+.shower {
+  opacity: 0;
+  animation: shower 10s ease-out both;
+}
+
+@keyframes shower {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.fall {
+  animation: fall 0.9s linear infinite;
+}
+
+@keyframes fall {
+  from {
+    transform: translate(10px, -60px);
+  }
+  to {
+    transform: translate(0, 0);
+  }
+}
+
+.snow {
+  animation: snow 9s linear infinite;
+}
+
+@keyframes snow {
+  from {
+    transform: translate(0, -80px);
+  }
+  to {
+    transform: translate(-12px, 0);
+  }
+}
+
+.rainbow {
+  opacity: 0.55;
+  animation: rainbow 2.4s ease-out 6s both;
+}
+
+@keyframes rainbow {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+.mist {
+  animation: drift 26s ease-in-out infinite alternate;
+  --dx: 40px;
+}
+
+/* ── Life ──────────────────────────────────────────────────────────────── */
+
+.blink {
+  animation: blink 3.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(3px, -6px);
+  }
+}
+
+.shimmer {
+  animation: shimmer 3.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateX(-4px);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateX(4px);
+  }
+}
+
+.smoke {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  opacity: 0;
+  animation: smoke 4.5s ease-out infinite;
+}
+
+@keyframes smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -34px) scale(1.6);
+  }
+}
+
+.hop {
+  animation: hop 3.4s ease-in-out infinite;
+}
+
+@keyframes hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-7px);
+  }
+  90% {
+    transform: translateY(0);
+  }
+}
+
+.bob {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: bob 5s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+
+.zzz {
+  animation: zzz 3.6s ease-out infinite;
+}
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(6px, -12px);
+  }
+}
+
+.flutter {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: flutter 0.35s ease-in-out infinite;
+}
+
+@keyframes flutter {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.35);
+  }
+}
+
+.orbit {
+  animation: orbit 6s ease-in-out infinite;
+}
+
+@keyframes orbit {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(10px, -6px);
+  }
+  50% {
+    transform: translate(4px, 4px);
+  }
+  75% {
+    transform: translate(-8px, -3px);
+  }
+}
+
+.glow {
+  opacity: calc(var(--f-glow-o) * 0.5);
+  animation: glow 3s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: calc(var(--f-glow-o) * 0.4);
+  }
+  50% {
+    opacity: calc(var(--f-glow-o) * 0.65);
+  }
+}
+
+.ring {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: ring 2.4s ease-in-out infinite;
+}
+
+@keyframes ring {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.06);
+  }
+}
+
+/* ── Control ───────────────────────────────────────────────────────────── */
+
+.frame[data-paused] .scene * {
+  animation-play-state: paused !important;
+}
+
+/* Thumbnails: the settled illustration, no motion at all. */
+.still,
+.still * {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .scene * {
+    animation: none !important;
+  }
+}

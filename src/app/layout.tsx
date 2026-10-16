@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
+import { CelebrationProvider } from "@/components/fx/celebrate";
 import { ThemeScript } from "@/components/theme";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -14,7 +15,20 @@ const fraunces = Fraunces({
   axes: ["SOFT", "WONK", "opsz"],
 });
 
+function siteUrl(): URL {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
+    "http://localhost:3000";
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+}
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: {
     default: "Canopy — grow your internship search",
     template: "%s · Canopy",
@@ -46,7 +60,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeScript />
       </head>
       <body className="min-h-full bg-paper text-ink">
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <CelebrationProvider>{children}</CelebrationProvider>
+        </ToastProvider>
       </body>
     </html>
   );

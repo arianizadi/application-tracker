@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { CelebrationWatcher } from "@/components/game/celebration-watcher";
 import { MobileNav, SideNav } from "@/components/shell/nav";
 import { UserBadge } from "@/components/shell/user-badge";
 import { PageSkeleton } from "@/components/ui/card";
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <MobileNav />
         <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-32 pt-6 sm:px-6 md:pb-12 md:pt-10 lg:px-10">
           <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+          <Suspense fallback={null}><CelebrationWatcher /></Suspense>
         </main>
       </div>
     </div>

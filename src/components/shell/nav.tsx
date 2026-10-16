@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme";
 
@@ -10,12 +10,31 @@ import { Icon } from "./icon";
 import { Logo } from "./logo";
 import { NAV } from "./nav-items";
 
-function isActive(pathname: string, href: string) {
+function isActive(pathname: string | null, href: string) {
+  if (!pathname) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/*
+ * Under Cache Components, usePathname() suspends while prerendering routes with
+ * unknown dynamic params (e.g. /applications/[id]). Each nav renders a
+ * pathname-less copy as its Suspense fallback so the shell still prerenders,
+ * then the live version highlights the active item.
+ */
+
 export function SideNav({ footer }: { footer?: React.ReactNode }) {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<SideNavView pathname={null} footer={footer} />}>
+      <LiveSideNav footer={footer} />
+    </Suspense>
+  );
+}
+
+function LiveSideNav({ footer }: { footer?: React.ReactNode }) {
+  return <SideNavView pathname={usePathname()} footer={footer} />;
+}
+
+function SideNavView({ footer, pathname }: { footer?: React.ReactNode; pathname: string | null }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-paper-2/60 px-4 py-6 md:flex">
       <Link href="/home" className="mb-8 flex items-center gap-3 px-2">
@@ -55,7 +74,18 @@ export function SideNav({ footer }: { footer?: React.ReactNode }) {
 }
 
 export function MobileNav() {
-  const pathname = usePathname();
+  return (
+    <Suspense fallback={<MobileNavView pathname={null} />}>
+      <LiveMobileNav />
+    </Suspense>
+  );
+}
+
+function LiveMobileNav() {
+  return <MobileNavView pathname={usePathname()} />;
+}
+
+function MobileNavView({ pathname }: { pathname: string | null }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const primary = NAV.filter((n) => n.mobile);
   const secondary = NAV.filter((n) => !n.mobile);
