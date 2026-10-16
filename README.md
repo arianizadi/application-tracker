@@ -21,6 +21,16 @@ bun run dev
 
 Open [localhost:3000](http://localhost:3000).
 
+## Repository and deployment
+
+The local repository is at `~/Documents/application-tracker`.
+The public source repository is [arianizadi/application-tracker](https://github.com/arianizadi/application-tracker).
+
+Vercel is connected to this GitHub repository. Pushes to `main` deploy to production;
+other branches create preview deployments. Configure each environment's `DATABASE_URL`
+in Vercel rather than committing credentials. The current MongoDB connection is
+configured as a production Secret.
+
 ## Commands
 
 | Command | Purpose |
