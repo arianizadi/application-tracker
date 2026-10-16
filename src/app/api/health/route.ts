@@ -1,8 +1,9 @@
+import { connection } from "next/server";
+
 import { isDatabaseConnected } from "@/lib/database";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
+  await connection();
   const connected = await isDatabaseConnected();
 
   return Response.json(

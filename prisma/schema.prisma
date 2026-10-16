@@ -8,25 +8,209 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Accounts ────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  name         String
+  passwordHash String
+  /// Applications per week he is aiming for (forgiving weekly streaks).
+  weeklyGoal   Int      @default(5)
+  /// IANA time zone used for day/night in the forest and week boundaries.
+  timeZone     String   @default("America/Los_Angeles")
+  /// Career track key from src/lib/tracks.ts; drives analyzer defaults and prep suggestions.
+  track        String   @default("cybersecurity")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     Session[]
+  applications Application[]
+  resumes      Resume[]
+  analyses     Analysis[]
+  achievements Achievement[]
+  progress     Progress[]
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  /// SHA-256 of the random session token; the raw token only lives in the cookie.
+  tokenHash  String   @unique
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  userAgent  String?
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Fixed-window counters used to throttle sign-in and sign-up attempts.
+model RateLimit {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  key     String   @unique
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limits")
+}
+
+// ─── Applications ────────────────────────────────────────────────────────────
+
 enum ApplicationStatus {
+  WISHLIST
   APPLIED
+  ASSESSMENT
   INTERVIEW
   OFFER
+  ACCEPTED
   REJECTED
+  GHOSTED
   WITHDRAWN
 }
 
-model Application {
-  id        String            @id @default(auto()) @map("_id") @db.ObjectId
-  company   String
-  role      String
-  status    ApplicationStatus @default(APPLIED)
-  url       String?
-  notes     String?
-  appliedAt DateTime          @default(now())
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+enum WorkMode {
+  ONSITE
+  HYBRID
+  REMOTE
+}
 
-  @@index([status, appliedAt])
+type StatusEvent {
+  status ApplicationStatus
+  at     DateTime
+}
+
+model Application {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String            @db.ObjectId
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     String
+  role        String
+  status      ApplicationStatus @default(APPLIED)
+  location    String?
+  workMode    WorkMode?
+  url         String?
+  /// Where he found it: LinkedIn, Handshake, referral, career fair, ...
+  source      String?
+  salary      String?
+  /// 1–5 hearts for how excited he is about it.
+  excitement  Int               @default(3)
+  contactName String?
+  notes       String?
+  deadline    DateTime?
+  followUpAt  DateTime?
+  /// When he actually submitted. Null while still on the wishlist.
+  appliedAt   DateTime?
+  resumeId    String?           @db.ObjectId
+  resume      Resume?           @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  history     StatusEvent[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, appliedAt])
+  @@index([userId, updatedAt])
+  @@index([resumeId])
   @@map("applications")
+}
+
+// ─── Resumes ─────────────────────────────────────────────────────────────────
+
+model Resume {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Human label, e.g. "SWE – backend focus".
+  label     String
+  /// Auto-incremented per user: v1, v2, v3...
+  version   Int
+  fileName  String?
+  mimeType  String?
+  sizeBytes Int?
+  /// Plain text extracted from the PDF (or pasted), used by the analyzer.
+  text      String
+  notes     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  file         ResumeFile?
+  applications Application[]
+  analyses     Analysis[]
+
+  @@unique([userId, version])
+  @@index([userId, createdAt])
+  @@map("resumes")
+}
+
+/// Raw file bytes live apart from Resume so list queries never load them.
+model ResumeFile {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  resumeId String @unique @db.ObjectId
+  resume   Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  data     Bytes
+
+  @@map("resume_files")
+}
+
+// ─── Analyzer ────────────────────────────────────────────────────────────────
+
+model Analysis {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId  String?  @db.ObjectId
+  resume    Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  /// Role preset key (e.g. "swe") or "custom" for a pasted job description.
+  preset    String
+  title     String
+  score     Int
+  found     String[]
+  missing   String[]
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("analyses")
+}
+
+// ─── Gamification ────────────────────────────────────────────────────────────
+
+/// Achievements are derived from data; this records when each one was first
+/// seen so the UI can celebrate it exactly once.
+model Achievement {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key        String
+  unlockedAt DateTime @default(now())
+  celebrated Boolean  @default(false)
+
+  @@unique([userId, key])
+  @@map("achievements")
+}
+
+// ─── Interview prep course ───────────────────────────────────────────────────
+
+/// Generic per-item progress for course content: kind is "module", "resource",
+/// "question" or "flashcard"; itemId is the content id from src/content.
+model Progress {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  itemId    String
+  /// "done", "saved", "practiced", "known", "learning"...
+  state     String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, itemId])
+  @@index([userId, kind])
+  @@map("progress")
 }
