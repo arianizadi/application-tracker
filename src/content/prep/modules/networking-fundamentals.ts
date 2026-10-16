@@ -1,0 +1,321 @@
+import type { Module } from "../types";
+
+export const prepModule: Module = {
+  id: "networking-fundamentals",
+  number: 2,
+  title: "Follow the Packet",
+  hook: "Explain how a request travels before deciding what went wrong.",
+  hours: 5,
+  tracks: ["ALL"],
+  objectives: [
+    "Relate OSI and TCP/IP models to real traffic.",
+    "Explain addressing, ports, routing, and name resolution.",
+    "Describe HTTP, TLS, and common transport behavior.",
+    "Investigate connectivity using evidence from multiple layers.",
+  ],
+  lesson: [
+    { type: "h", text: "Follow one conversation" },
+    {
+      type: "p",
+      text: "Networking questions become much easier when you follow a single conversation. Imagine your browser requesting a page from google.com. The **name** identifies a service, an **IP address** helps deliver packets, a **transport protocol** carries the conversation, and **HTTP** describes the application exchange. Each layer answers a different question.",
+    },
+    {
+      type: "diagram",
+      caption: "One request, many layers. The bottom step repeats at every hop along the route.",
+      lines: [
+        "browser request (HTTP)",
+        "      |",
+        "      v",
+        "transport conversation (TCP or QUIC/UDP)",
+        "      |",
+        "      v",
+        "IP packets (source IP -> destination IP)",
+        "      |",
+        "      v",
+        "local network frames (Ethernet / Wi-Fi, MAC to MAC) --> next hop",
+      ],
+    },
+    { type: "h", text: "OSI and TCP/IP models" },
+    {
+      type: "p",
+      text: "The **OSI model** has seven conceptual layers: physical, data link, network, transport, session, presentation, and application. The **TCP/IP model** commonly groups responsibilities into link, internet, transport, and application layers. These are models for reasoning, not separate programs that every packet visibly contains.",
+    },
+    {
+      type: "diagram",
+      caption: "How the two models line up, with common examples.",
+      lines: [
+        "OSI                     TCP/IP         Examples",
+        "-------------------     -----------    -------------------------",
+        "7 Application      \\",
+        "6 Presentation      >   Application    DNS, HTTP, TLS*, SSH",
+        "5 Session          /",
+        "4 Transport             Transport      TCP, UDP (QUIC runs over UDP)",
+        "3 Network               Internet       IPv4, IPv6, ICMP",
+        "2 Data link        \\    Link           Ethernet, Wi-Fi, ARP",
+        "1 Physical         /",
+        "",
+        "* TLS does not fit neatly into one layer; it sits between transport and application.",
+      ],
+    },
+    {
+      type: "p",
+      text: "For interviews, a safe mapping is Ethernet or Wi-Fi at the link layer, IP at the internet layer, TCP or UDP at transport, and DNS or HTTP at application. If someone asks which layer a protocol lives in, it is fine to say the models are approximations and explain what the protocol actually does.",
+    },
+    { type: "h", text: "Addresses, subnets, and getting to the next hop" },
+    {
+      type: "p",
+      text: "An **IP address** identifies an interface within an addressing context. A **subnet prefix** (such as `/24`) tells a host whether a destination is on the local network or whether traffic must go to a **gateway**. **MAC addresses** support delivery on the local link, and **routers** forward packets between networks.",
+    },
+    {
+      type: "callout",
+      tone: "example",
+      title: "Worked example: local or remote?",
+      text: "Your laptop is `192.168.1.25/24` with gateway `192.168.1.1`. A `/24` means the first 24 bits (`192.168.1`) are the network, so `192.168.1.0` to `192.168.1.255` is local: 256 addresses, 254 usable for hosts after the network and broadcast addresses. Sending to `192.168.1.40` stays on the local link. Sending to `8.8.8.8` is outside the prefix, so the laptop sends the frame to the gateway's MAC address, and the router takes it from there.",
+    },
+    {
+      type: "p",
+      text: "**ARP** resolves IPv4 addresses to MAC addresses on a local link, while IPv6 uses **Neighbor Discovery** for the same job. **NAT** can translate addresses, but translation alone is not a complete security policy. Routing (where packets go) and filtering (which packets are allowed) remain distinct concerns.",
+    },
+    { type: "h", text: "Name resolution with DNS" },
+    {
+      type: "p",
+      text: "Before contacting a named server, the client usually needs **DNS** resolution. Caches in the browser, operating system, or resolver may already hold an answer. Otherwise, a recursive resolver works through the DNS hierarchy: root, top-level domain (TLD), and authoritative servers.",
+    },
+    {
+      type: "diagram",
+      caption: "Resolving google.com when nothing is cached. Answers are cached for their TTL.",
+      lines: [
+        "client (stub resolver)",
+        "   |  1. A record for google.com?",
+        "   v",
+        "recursive resolver --2--> root server     (refers to .com servers)",
+        "                   --3--> .com TLD server (refers to google.com nameservers)",
+        "                   --4--> authoritative   (returns the A record)",
+        "   |  5. answer (cached for its TTL)",
+        "   v",
+        "client connects to the returned IP",
+      ],
+    },
+    {
+      type: "p",
+      text: "**A** and **AAAA** records provide IPv4 and IPv6 addresses; **CNAME** records identify aliases. Other common types include **MX** (mail servers), **TXT** (free text, often used for SPF and domain verification), and **NS** (the zone's nameservers). Classic DNS uses UDP port 53, falling back to TCP port 53 for large responses and zone transfers. Encrypted options use other transports: **DNS over TLS** uses TCP port 853, and **DNS over HTTPS** blends into ordinary HTTPS on port 443, which is one reason DNS visibility on a network can be incomplete.",
+    },
+    {
+      type: "code",
+      lang: "text",
+      caption: "Trimmed, illustrative output of `dig www.example.com A`. Addresses use the 203.0.113.0/24 documentation range.",
+      code: [
+        ";; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 41872",
+        ";; QUESTION SECTION:",
+        ";www.example.com.           IN    A",
+        "",
+        ";; ANSWER SECTION:",
+        "www.example.com.     300    IN    CNAME   web.example.net.",
+        "web.example.net.     60     IN    A       203.0.113.10",
+        "",
+        ";; SERVER: 192.168.1.1#53(192.168.1.1) (UDP)",
+      ].join("\n"),
+    },
+    {
+      type: "p",
+      text: "Reading it: `status: NOERROR` means the query succeeded (compare `NXDOMAIN`, which means the name does not exist, and `SERVFAIL`, which means the resolver could not get an answer). The name is an alias (CNAME) pointing to another name, which resolves to one IPv4 address. The numbers 300 and 60 are TTLs in seconds. Remember: **a DNS answer does not establish that a destination is safe.**",
+    },
+    { type: "h", text: "Transport: TCP, UDP, and QUIC" },
+    {
+      type: "p",
+      text: "For a common HTTPS request using HTTP/1.1 or HTTP/2, the client first establishes **TCP**, then **TLS**, before exchanging application data. TCP's three-way handshake uses SYN, SYN-ACK, and ACK. TCP provides an ordered, reliable byte stream with retransmission and flow control, but it does **not** encrypt anything.",
+    },
+    {
+      type: "diagram",
+      caption: "TCP three-way handshake, then a TLS 1.3 handshake on top of it.",
+      lines: [
+        "client                                   server :443",
+        "  | ---- SYN (seq=x) ----------------------> |",
+        "  | <--- SYN-ACK (seq=y, ack=x+1) ---------- |",
+        "  | ---- ACK (ack=y+1) --------------------> |   TCP connection open",
+        "  |                                          |",
+        "  | ---- ClientHello (SNI, key share) -----> |",
+        "  | <--- ServerHello (key share) ----------- |",
+        "  | <--- {Certificate, CertificateVerify,    |   {braces} = encrypted; everything",
+        "  |       Finished} ------------------------ |   after ServerHello is encrypted",
+        "  | ---- Finished -------------------------> |   TLS ready",
+        "  | ==== encrypted HTTP request ===========> |",
+      ],
+    },
+    {
+      type: "p",
+      text: "**TLS** supplies confidentiality, integrity, and server authentication. The client validates the server's certificate: it must chain to a trusted certificate authority, be within its validity dates, and match the requested hostname. **HTTP/3** instead runs over **QUIC**, which uses UDP and builds TLS 1.3 into its own handshake. So do not insist that every HTTPS request begins with a TCP handshake; see the [HTTP/3 specification](https://www.rfc-editor.org/rfc/rfc9114.html).",
+    },
+    { type: "h", text: "Ports and what they do and do not prove" },
+    {
+      type: "p",
+      text: "Ports identify transport endpoints. Learn common defaults, while remembering that services can run on any port:",
+    },
+    {
+      type: "list",
+      items: [
+        "**22** SSH",
+        "**25** SMTP (mail transfer)",
+        "**53** DNS",
+        "**80** HTTP",
+        "**443** HTTPS (TCP, and UDP for HTTP/3)",
+        "**445** SMB (Windows file sharing)",
+        "**3389** RDP (Windows remote desktop)",
+      ],
+    },
+    {
+      type: "p",
+      text: "A port number suggests a convention; it does not prove which application is running. After the connection is ready, the browser exchanges requests and responses, may follow redirects, fetches additional resources, and reuses existing connections rather than repeating every setup step.",
+    },
+    { type: "h", text: "Troubleshooting layer by layer" },
+    {
+      type: "p",
+      text: "When something does not work, move from observations to layers. Ask these questions in order and gather evidence for each:",
+    },
+    {
+      type: "list",
+      ordered: true,
+      items: [
+        "**Does the name resolve?** Try `nslookup` or `dig` and check the status and returned address.",
+        "**Is there a route?** Check the local IP configuration and default gateway (`ip addr` and `ip route` on Linux, `ipconfig` on Windows), then `traceroute` or `tracert`.",
+        "**Can a transport connection form?** Test the actual service port, for example `Test-NetConnection host -Port 443` in PowerShell or `nc -vz host 443`.",
+        "**Does TLS validate?** Look for certificate name, expiry, or trust errors, for example with `curl -v https://host`.",
+        "**What does the application return?** Read the HTTP status code and the server or application logs.",
+      ],
+    },
+    {
+      type: "callout",
+      tone: "warning",
+      title: "A failed ping is inconclusive",
+      text: "ICMP is often filtered by firewalls, so a host can ignore ping and still serve traffic perfectly well on port 443. Always test the service you actually care about.",
+    },
+    {
+      type: "callout",
+      tone: "interview",
+      title: "Say it like this",
+      text: "I would separate resolution, connectivity, TLS, and application behavior, then use packet and service evidence to narrow down where the failure is.",
+    },
+  ],
+  sayItLikeThis:
+    "When I think about a network problem, I follow one request through the layers. First the name has to resolve through DNS, then the host decides whether the destination is local or goes to its gateway, then a transport connection forms, usually a TCP handshake followed by TLS, or QUIC over UDP for HTTP/3, and finally the application exchanges HTTP requests and responses. Each step leaves different evidence, so I'd check resolution, routing, the service port, certificate validation, and the application response in that order, and I wouldn't treat a single failed ping or a port number as proof of anything on its own.",
+  terms: [
+    { term: "Subnet", definition: "An address range described by a network prefix, such as 192.168.1.0/24." },
+    { term: "Gateway", definition: "A next-hop device, usually a router, used to reach other networks." },
+    { term: "DNS", definition: "System for resolving names and publishing related records such as A, AAAA, CNAME, and MX." },
+    { term: "TCP", definition: "Connection-oriented transport providing an ordered, reliable byte stream with retransmission and flow control." },
+    { term: "UDP", definition: "Datagram transport without TCP's delivery or ordering guarantees." },
+    { term: "QUIC", definition: "A UDP-based transport with TLS 1.3 built in, used by HTTP/3." },
+    { term: "TLS", definition: "Protocol providing confidentiality, integrity, and peer authentication for communication." },
+    { term: "Port", definition: "Number identifying a transport endpoint on a host." },
+    { term: "ARP", definition: "Protocol that maps IPv4 addresses to MAC addresses on a local link." },
+    { term: "NAT", definition: "Network Address Translation: rewriting addresses as packets cross a device, often to share one public IP. Not a security policy by itself." },
+    { term: "PCAP", definition: "File containing captured packet data." },
+  ],
+  questions: [
+    {
+      id: "networking-fundamentals-q1",
+      question: "What happens when you type google.com into a browser?",
+      answer:
+        "The browser turns google.com into a URL, usually https://google.com/, and resolves the name: it checks the browser and OS caches, then asks a recursive resolver, which may walk root, .com, and Google's authoritative servers. With an IP in hand, the OS decides the destination is off-subnet and sends frames to the default gateway's MAC address. For HTTP/1.1 or HTTP/2, the browser opens a TCP connection to port 443 with a three-way handshake, then a TLS handshake where it validates that the certificate chains to a trusted CA, is in date, and matches google.com. If the browser already knows the site supports HTTP/3, it can use QUIC over UDP instead. It then sends an HTTP GET, likely gets a redirect such as to www.google.com, follows it, and renders the page while fetching scripts, styles, and images, reusing connections where it can.",
+      checking: "Connected reasoning across layers and awareness of modern protocols. Interviewers often let you go as deep as you want, so be ready to expand on DNS, the TCP handshake, or certificate validation.",
+      difficulty: "core",
+    },
+    {
+      id: "networking-fundamentals-q2",
+      question: "TCP versus UDP?",
+      answer:
+        "TCP supplies a connection-oriented, ordered byte stream with retransmission and flow control. UDP sends individual datagrams without those transport-level guarantees. Applications can build additional reliability and security on top of UDP, as QUIC does.",
+      checking: "Understanding beyond the slogan that TCP is reliable and UDP is fast.",
+      difficulty: "warmup",
+    },
+    {
+      id: "networking-fundamentals-q3",
+      question: "What does DNS do?",
+      answer:
+        "DNS publishes records associated with names, including address records. A resolver may answer from cache or obtain information through the root, TLD, and authoritative servers. When investigating a resolution problem, I would inspect the record, the response status, and the resolver's behavior.",
+      checking: "Resolution mechanics and troubleshooting instinct.",
+      difficulty: "warmup",
+    },
+    {
+      id: "networking-fundamentals-q4",
+      question: "Does HTTPS mean a website is safe?",
+      answer:
+        "No. HTTPS protects the connection and helps authenticate the server for the requested hostname. A malicious website can obtain a valid certificate for its own domain. I would still assess the destination, its content, and the business context.",
+      checking: "Knowing what a security control guarantees and what it does not.",
+      difficulty: "warmup",
+    },
+    {
+      id: "networking-fundamentals-q5",
+      question: "What is the difference between a switch and a router?",
+      answer:
+        "A switch commonly forwards frames within a link-layer network using MAC address information. A router forwards IP packets between networks using routing information. Real devices can combine these capabilities, so I would discuss the function each performs in the specific path.",
+      checking: "Layer distinctions.",
+      difficulty: "warmup",
+    },
+    {
+      id: "networking-fundamentals-q6",
+      question: "A host does not respond to ping. Is it offline?",
+      answer:
+        "Not necessarily, because ICMP may be blocked or deprioritized. I would test the relevant service port and inspect routing, filtering, and packet evidence. I would avoid equating one failed diagnostic with total host unavailability.",
+      checking: "Avoiding premature conclusions.",
+      difficulty: "core",
+    },
+    {
+      id: "networking-fundamentals-q7",
+      question: "What does a filtered port mean in Nmap?",
+      answer:
+        "It means Nmap could not determine whether the port is open because packet filtering, such as a firewall, prevented its probes from reaching the port. Typically it got no response at all, or an ICMP unreachable error. That is different from closed, where the host answered with a TCP RST, so the host is reachable but nothing is listening. The result depends on the scan type and where you scanned from, so I would document those conditions rather than report a confirmed service, and only scan systems I'm authorized to test.",
+      checking: "Interpretation of tool output.",
+      difficulty: "core",
+    },
+    {
+      id: "networking-fundamentals-q8",
+      question: "What can you learn from an encrypted packet capture?",
+      answer:
+        "I can still see IP addresses and ports, timing, packet sizes and volume, and transport behavior such as resets and retransmissions. From the TLS handshake I can usually see the server name (SNI) in the ClientHello unless Encrypted Client Hello is in use, plus the offered versions and cipher suites. In TLS 1.2 the server certificate is visible too, while TLS 1.3 encrypts it. Unencrypted DNS queries in the same capture often reveal which names were looked up. Application content usually remains unavailable, and visibility depends on the protocol and where the capture was taken, so I would combine this metadata with endpoint, proxy, and application logs.",
+      checking: "Realistic expectations about visibility.",
+      difficulty: "stretch",
+    },
+    {
+      id: "networking-fundamentals-q9",
+      question: "How many usable host addresses are in a /24, and how does a host decide to use its gateway?",
+      answer:
+        "A /24 leaves 8 bits for hosts, which is 256 addresses. In traditional IPv4 subnets the first is the network address and the last is the broadcast address, so 254 are usable for hosts. A host compares the destination's network bits to its own using the prefix; if they match it delivers locally using ARP, and if not it sends the packet to its default gateway.",
+      checking: "Basic subnetting math and the local-versus-remote decision, which shows up in almost every troubleshooting question.",
+      difficulty: "core",
+    },
+    {
+      id: "networking-fundamentals-q10",
+      question: "Walk me through what happens during a TLS handshake at a high level.",
+      answer:
+        "The client sends a ClientHello with the TLS versions and cipher suites it supports, a key share, and usually the server name. The server replies with its choices and its own key share. Because both shares are ephemeral Diffie-Hellman values, both sides derive the same session keys without ever sending them, which also gives forward secrecy. The server proves its identity with a certificate and a signature over the handshake, and the client checks that the certificate chains to a trusted CA, is in date, and matches the hostname. Both sides confirm the handshake wasn't tampered with, then send application data encrypted with the session keys. In TLS 1.3 this takes one round trip.",
+      checking: "Whether you understand that TLS is about key agreement plus authentication, and that certificate validation is what ties the connection to the right server.",
+      difficulty: "stretch",
+    },
+    {
+      id: "networking-fundamentals-q11",
+      question: "What is ARP spoofing, and why does it matter?",
+      answer:
+        "ARP has no built-in authentication, so a device on the same local network can send forged ARP replies claiming that its MAC address belongs to another IP, often the gateway. Victims then send traffic to the attacker, enabling interception or manipulation. Defenses include features like Dynamic ARP Inspection on managed switches, network segmentation, and using encrypted protocols such as TLS so intercepted traffic is still protected.",
+      checking: "Connecting a protocol's design to an attack and to realistic mitigations.",
+      difficulty: "core",
+    },
+  ],
+  lab: {
+    title: "Read one DNS exchange and one TCP conversation in Wireshark",
+    steps: [
+      "Install Wireshark and skim the capture and display-filter sections of the [Wireshark User's Guide](https://www.wireshark.org/docs/wsug_html_chunked/).",
+      "Capture only your own authorized test traffic on your own machine, or open an approved sample capture. Never capture on networks you do not own or have permission to monitor.",
+      "Start the capture, then in a terminal run `nslookup example.com` and load `https://example.com` once in a browser. Stop the capture.",
+      "Apply the display filter `dns` and find your query and its response. Record the query name, record type, response code, returned address, and TTL.",
+      "Apply the filter `tcp.flags.syn == 1` and find the SYN and SYN-ACK to the returned address. (If your network has IPv6, the browser may connect to the AAAA address instead, so check both.) Right-click a packet and choose Follow, then TCP Stream (or use Statistics, then Conversations) to see the full exchange.",
+      "Apply the filter `tls.handshake.type == 1` to find the TLS ClientHello. Expand it and note what is visible in clear text, such as the server_name extension and offered cipher suites, and what is encrypted after the ServerHello.",
+      "If you see QUIC instead of TCP, that is HTTP/3; note it and use the filter `quic` to explore.",
+      "Write a short paragraph explaining what the capture proves (for example, that this host resolved the name and completed a handshake with that address) and what it cannot reveal (for example, the page content or which user initiated it).",
+    ],
+    resourceIds: ["r02"],
+    links: [],
+  },
+  resourceIds: ["r01", "r02", "r10"],
+  extraLinks: [{ title: "RFC 9114: HTTP/3", url: "https://www.rfc-editor.org/rfc/rfc9114.html" }],
+};

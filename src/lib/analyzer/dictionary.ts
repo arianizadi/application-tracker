@@ -1,3 +1,4 @@
+import { CYBER_CONCEPTS } from "./presets/cybersecurity";
 import type { ConceptDef } from "./types";
 
 /**
@@ -31,6 +32,9 @@ const SENTINEL_GUARD = {
 } as const;
 
 export const CONCEPTS: Record<string, ConceptDef> = {
+  // Cyber-only concepts live beside their presets (presets/cybersecurity.ts).
+  ...CYBER_CONCEPTS,
+
   // ── Languages ──────────────────────────────────────────────────────────────
   Python: { aliases: ["python3", "python 3"] },
   Java: { exact: true },
@@ -39,7 +43,7 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   "C++": { aliases: ["cpp", "c plus plus"] },
   "C#": { aliases: ["csharp", "c sharp"] },
   C: { aliases: ["c programming", "ansi c", "c language"], guards: { c: { cased: ["C"], near: LANG_NEAR, notBefore: ["level", "suite", "corp"] } } },
-  Go: { aliases: ["golang"], guards: { go: { cased: ["Go", "GO"], near: LANG_NEAR } } },
+  Go: { aliases: ["golang"], guards: { go: { cased: ["Go", "GO"], near: LANG_NEAR, notBefore: ["to"] } } },
   Rust: { exact: true, guards: { rust: { cased: ["Rust"] } } },
   R: { aliases: ["rstudio", "r programming", "r language"], guards: { r: { cased: ["R"], near: STATS_NEAR } } },
   Bash: { aliases: ["bash scripting", "shell scripting", "shell scripts", "zsh"], guards: { bash: { cased: ["Bash", "BASH"] } } },
@@ -86,7 +90,7 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   },
   "Active Directory": {
     aliases: ["ad ds", "active directory domain services", "ad", "group policy", "gpo"],
-    guards: { ad: { cased: ["AD"], near: AD_NEAR }, gpo: { cased: ["GPO", "GPOs"] } },
+    guards: { ad: { cased: ["AD"], near: AD_NEAR, notAfter: ["azure"] }, "active directory": { notAfter: ["azure"] }, gpo: { cased: ["GPO", "GPOs"] } },
   },
   "Microsoft Entra ID": { aliases: ["entra id", "entra", "azure active directory", "azure ad", "aad"], guards: { aad: { cased: ["AAD"] }, entra: { cased: ["Entra"] } } },
   YARA: { aliases: ["yara rules", "yara rule"] },
@@ -192,13 +196,27 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   "Shared responsibility model": { aliases: ["shared responsibility"] },
 
   // ── Cyber skills & concepts ────────────────────────────────────────────────
-  Networking: { aliases: ["computer networking", "computer networks", "network fundamentals", "routing and switching", "network protocols", "routing", "switching", "subnetting"] },
+  Networking: {
+    aliases: [
+      "computer networking", "computer networks", "network fundamentals", "routing and switching", "network protocols", "routing", "switching", "subnetting",
+    ],
+    // Not the career-fair kind.
+    guards: {
+      networking: {
+        notAfter: ["professional", "social", "career", "industry", "alumni"],
+        notBefore: ["event", "events", "night", "nights", "reception", "receptions", "opportunities", "opportunity", "mixer", "mixers", "luncheon", "dinner"],
+      },
+    },
+  },
   "TCP/IP": { aliases: ["tcp", "udp", "ip networking", "osi model", "osi", "tcp/udp", "ipv4", "ipv6"], guards: { osi: { cased: ["OSI"] } } },
   DNS: { aliases: ["domain name system", "dns security"] },
   HTTP: { aliases: ["https", "http/https", "http protocol"] },
   "Network security": { aliases: ["network defense", "securing networks", "network hardening"] },
   "Endpoint security": { aliases: ["endpoint protection", "antivirus", "epp"] },
-  "Network segmentation": { aliases: ["segmentation", "vlan", "vlans", "microsegmentation", "dmz"] },
+  "Network segmentation": {
+    aliases: ["segmentation", "vlan", "vlans", "microsegmentation", "dmz"],
+    guards: { segmentation: { notAfter: ["market", "customer", "audience", "consumer", "user", "image", "semantic", "instance", "behavioral"] } },
+  },
   VPN: { aliases: ["vpns", "ipsec", "wireguard", "openvpn", "site-to-site vpn"] },
   Hardening: { aliases: ["system hardening", "os hardening", "server hardening", "host hardening", "secure configuration", "secure configurations", "cis benchmarks"] },
   "Patch management": { aliases: ["patching", "patch deployment", "patches"] },
@@ -210,7 +228,7 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   },
   "Incident response": {
     aliases: ["incident handling", "ir", "csirt", "cirt", "incident management", "security incidents", "responding to incidents", "incident responder"],
-    guards: { ir: { cased: ["IR"], near: IR_NEAR } },
+    guards: { ir: { cased: ["IR"], near: IR_NEAR, notBefore: ["sensor", "sensors", "camera", "cameras", "remote", "led", "leds", "receiver", "transmitter", "spectroscopy", "thermometer"] } },
   },
   "Log analysis": {
     aliases: ["log review", "log monitoring", "log management", "log correlation", "analyzed logs", "analyzing logs", "analyze logs", "reviewing logs", "reviewed logs", "log parsing"],
@@ -225,10 +243,16 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   "Threat detection": { aliases: ["detecting threats", "detection and response", "detection & response", "security monitoring", "continuous monitoring"] },
   "Detection engineering": { aliases: ["detection rules", "detection content", "detection rule", "writing detections", "wrote detections", "detection development", "detections"] },
   "Detection as code": { aliases: ["detection-as-code", "detections as code", "detection pipelines"] },
-  "Alert tuning": { aliases: ["tuning", "detection tuning", "false positive reduction", "reduce false positives", "reduced false positives", "false positives", "rule tuning"] },
+  "Alert tuning": {
+    aliases: [
+      "tuning", "detection tuning", "false positive reduction", "reduce false positives", "reduced false positives", "false positives", "rule tuning",
+      "false-positive tuning", "false positive tuning",
+    ],
+    guards: { tuning: { notAfter: ["fine", "hyperparameter", "hyper", "parameter", "model", "performance", "query", "piano", "guitar"] } },
+  },
   "Correlation rules": { aliases: ["correlation searches", "correlation rule", "correlation search", "use cases"], guards: { "use cases": { near: ["siem", "detection", "splunk", "sentinel", "soc"] } } },
-  Telemetry: { aliases: ["log sources", "endpoint telemetry", "data sources", "event telemetry"], guards: { "data sources": { near: ["siem", "detection", "logs", "security", "telemetry", "splunk"] } } },
-  "Data normalization": { aliases: ["ocsf", "elastic common schema", "common information model", "log normalization", "log parsing"] },
+  Telemetry: { aliases: ["log sources", "endpoint telemetry", "data sources", "event telemetry", "security telemetry", "log source onboarding", "onboarded log sources", "log onboarding"], guards: { "data sources": { near: ["siem", "detection", "logs", "security", "telemetry", "splunk"] } } },
+  "Data normalization": { aliases: ["ocsf", "elastic common schema", "common information model", "log normalization", "log parsing", "field normalization", "log field normalization"] },
   "Windows event logs": { aliases: ["event logs", "windows event log", "event viewer", "security event logs", "event ids", "windows logs", "evtx"] },
   "Digital forensics": { aliases: ["computer forensics", "forensic analysis", "forensics", "dfir", "forensic investigation", "forensic investigations", "digital forensics and incident response"] },
   "Memory forensics": { aliases: ["memory analysis", "memory dump analysis", "ram analysis"] },
@@ -239,11 +263,11 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   Containment: { aliases: ["containment and eradication", "eradication", "containment eradication and recovery"] },
   Playbooks: { aliases: ["incident response playbooks", "runbooks", "playbook", "runbook", "ir playbooks", "response playbooks"] },
   "Root cause analysis": { aliases: ["root-cause analysis", "rca", "root causes"], guards: { rca: { cased: ["RCA"] } } },
-  "Threat intelligence": { aliases: ["cyber threat intelligence", "cti", "threat intel", "threat intelligence analysis"], guards: { cti: { cased: ["CTI"] } } },
+  "Threat intelligence": { aliases: ["cyber threat intelligence", "cti", "threat intel", "threat intelligence analysis", "intelligence analysis", "cyber intelligence analysis"], guards: { cti: { cased: ["CTI"] } } },
   OSINT: { aliases: ["open source intelligence", "open-source intelligence", "recon-ng", "theharvester", "spiderfoot"] },
   IOCs: { aliases: ["indicators of compromise", "indicator of compromise", "ioc", "iocs"] },
   TTPs: { aliases: ["tactics techniques and procedures", "tactics, techniques, and procedures", "ttp"] },
-  "Threat actor tracking": { aliases: ["threat actors", "threat actor", "apt groups", "adversary tracking", "threat actor profiling", "apt tracking", "actor profiles"] },
+  "Threat actor tracking": { aliases: ["threat actors", "threat actor", "apt groups", "adversary tracking", "threat actor profiling", "threat actor research", "apt tracking", "actor profiles"] },
   "Dark web monitoring": { aliases: ["dark web", "darknet", "deep and dark web", "underground forums"] },
   "Intelligence reporting": { aliases: ["intelligence reports", "threat reports", "threat briefings", "intel reports", "intelligence briefings", "intelligence products", "threat reporting"] },
   "Structured analytic techniques": { aliases: ["analysis of competing hypotheses", "structured analytical techniques", "ach"], guards: { ach: { cased: ["ACH"] } } },
@@ -272,7 +296,7 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   "Secure code review": { aliases: ["security code review", "security code reviews", "secure code reviews", "code security review", "manual code review"] },
   SAST: { aliases: ["static application security testing", "static code analysis", "static analysis", "semgrep", "codeql", "checkmarx", "sonarqube", "snyk code", "bandit"] },
   DAST: { aliases: ["dynamic application security testing", "owasp zap", "zed attack proxy", "dynamic scanning", "invicti", "acunetix"] },
-  SCA: { aliases: ["software composition analysis", "dependency scanning", "dependabot", "dependency-check", "snyk open source", "dependency management"], guards: { sca: { cased: ["SCA"] } } },
+  SCA: { aliases: ["software composition analysis", "dependency scanning", "dependency analysis", "dependabot", "dependency-check", "snyk open source", "dependency management"], guards: { sca: { cased: ["SCA"] } } },
   "Threat modeling": { aliases: ["threat model", "threat models", "stride", "attack trees", "pasta threat modeling"], guards: { stride: { cased: ["STRIDE"] } } },
   XSS: { aliases: ["cross-site scripting", "cross site scripting", "stored xss", "reflected xss", "dom xss"] },
   "SQL injection": { aliases: ["sqli", "sql injections", "sql-injection"] },
@@ -323,7 +347,7 @@ export const CONCEPTS: Record<string, ConceptDef> = {
     aliases: ["third-party risk management", "third party risk management", "third-party risk", "third party risk", "tprm", "vendor risk assessments", "vendor assessments", "vendor risk", "security questionnaires"],
   },
   "Security controls": {
-    aliases: ["control testing", "controls testing", "controls assessment", "control assessments", "internal controls", "it general controls", "itgc", "itgcs", "control mapping", "controls mapping"],
+    aliases: ["control testing", "controls testing", "controls assessment", "control assessments", "internal controls", "it general controls", "itgc", "itgcs", "control mapping", "controls mapping", "control effectiveness", "security control testing"],
   },
   "Gap analysis": { aliases: ["gap assessment", "gap assessments", "gap analyses"] },
   "Business continuity": { aliases: ["bcp", "business continuity planning", "disaster recovery", "drp", "bc/dr", "bcdr", "continuity planning"] },
@@ -349,10 +373,25 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   CMMC: { aliases: ["nist 800-171", "800-171", "dfars"] },
   FedRAMP: {},
   "CIS Controls": { aliases: ["cis critical security controls", "cis top 18", "cis 18", "cis controls v8"] },
-  "CIS Benchmarks": { aliases: ["cis benchmark", "cis hardening"] },
+  "CIS Benchmarks": {
+    aliases: [
+      "cis benchmark", "cis hardening", "cis foundations benchmark", "cis aws foundations benchmark", "cis azure foundations benchmark",
+      "cis google cloud platform foundation benchmark", "cis kubernetes benchmark", "cis docker benchmark",
+    ],
+  },
   COBIT: {},
   SOX: { aliases: ["sarbanes-oxley", "sarbanes oxley", "sox compliance"] },
-  "OWASP Top 10": { aliases: ["owasp", "owasp top ten", "owasp top 10 2021", "owasp vulnerabilities"] },
+  "OWASP Top 10": {
+    aliases: ["owasp", "owasp top ten", "owasp top 10 2021", "owasp top 10 2025", "owasp vulnerabilities"],
+    guards: {
+      owasp: {
+        notBefore: [
+          "zap", "asvs", "wstg", "juice", "testing", "cheat", "threat", "api", "samm", "dependency", "crapi", "web", "mobile", "masvs", "chapter",
+          "chapters", "amass", "defectdojo", "modsecurity", "crs",
+        ],
+      },
+    },
+  },
   "OWASP ASVS": { aliases: ["asvs", "application security verification standard"] },
   CVSS: { aliases: ["common vulnerability scoring system", "cvss scoring"] },
   "CVE research": { aliases: ["cve", "cves", "common vulnerabilities and exposures", "cve analysis"] },
@@ -370,11 +409,35 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   "Identity governance": { aliases: ["iga", "identity governance and administration", "identity lifecycle"] },
   "Access reviews": { aliases: ["user access reviews", "access recertification", "access recertifications", "access certification", "access certifications", "uar"], guards: { uar: { cased: ["UAR"] } } },
   RBAC: { aliases: ["role-based access control", "role based access control", "abac", "attribute-based access control"] },
-  Provisioning: { aliases: ["user provisioning", "deprovisioning", "joiner mover leaver", "joiner-mover-leaver", "jml", "scim", "account lifecycle", "onboarding and offboarding"], guards: { jml: { cased: ["JML"] } } },
+  Provisioning: {
+    aliases: [
+      "user provisioning", "account provisioning", "access provisioning", "deprovisioning", "joiner mover leaver", "joiner-mover-leaver", "jml", "scim",
+      "account lifecycle", "onboarding and offboarding",
+    ],
+    guards: {
+      jml: { cased: ["JML"] },
+      provisioning: {
+        near: [
+          "user", "users", "account", "accounts", "access", "identity", "identities", "iam", "scim", "okta", "entra", "sailpoint", "ad", "directory",
+          "groups", "roles", "joiner", "joiners", "leaver", "leavers", "onboarding", "offboarding", "deprovisioning", "lifecycle", "permissions",
+        ],
+      },
+    },
+  },
   "Conditional access": { aliases: ["conditional access policies"] },
   Passwordless: { aliases: ["fido2", "webauthn", "passkeys", "passkey"] },
   "Help desk": { aliases: ["helpdesk", "it support", "service desk", "technical support", "desktop support", "tier 1 support"] },
-  Ticketing: { aliases: ["ticketing systems", "ticketing system", "tickets", "servicenow", "jira service management", "zendesk", "freshservice"] },
+  Ticketing: {
+    aliases: ["ticketing systems", "ticketing system", "tickets", "servicenow", "jira service management", "zendesk", "freshservice"],
+    guards: {
+      tickets: {
+        near: [
+          "support", "help", "desk", "helpdesk", "jira", "servicenow", "incident", "incidents", "queue", "resolved", "closed", "escalated",
+          "triaged", "access", "users", "technical", "service", "zendesk", "sla", "slas", "security",
+        ],
+      },
+    },
+  },
   SOC: {
     aliases: ["security operations center", "security operations", "secops", "soc analyst", "soc operations"],
     guards: { soc: { cased: ["SOC"], notBefore: ["2", "ii", "1", "type"] } },

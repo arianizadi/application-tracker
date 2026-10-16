@@ -173,7 +173,7 @@ const TEMPLATES: Template[] = [
       title: "Practice 3 interview questions",
       detail: "Out loud counts double (emotionally, not in XP).",
       progress: Math.min(3, c.snapshot.progress.filter((p) => p.kind === "question" && isPrepDone(p.state) && thisWeek(c, p.updatedAt)).length),
-      target: 3, xp: 3 * XP.prep.question, href: "/prep", mascot: "pip",
+      target: 3, xp: 3 * XP.prep.question, href: "/prep/mock", mascot: "pip",
     }),
   },
   {
@@ -184,7 +184,7 @@ const TEMPLATES: Template[] = [
       title: "Learn 10 flashcards",
       detail: c.track === "cybersecurity" ? "Ports, protocols, that one acronym you always forget." : "Small reps, big recall.",
       progress: Math.min(10, c.snapshot.progress.filter((p) => p.kind === "flashcard" && isPrepDone(p.state) && thisWeek(c, p.updatedAt)).length),
-      target: 10, xp: 10 * XP.prep.flashcard, href: "/prep", mascot: "acorn",
+      target: 10, xp: 10 * XP.prep.flashcard, href: "/prep/flashcards", mascot: "acorn",
     }),
   },
   {

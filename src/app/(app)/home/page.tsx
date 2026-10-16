@@ -20,6 +20,7 @@ import { OfferCelebration } from "@/components/home/offer-celebration";
 import { PrepRecommendations } from "@/components/home/prep-recs";
 import { ProgressStrip } from "@/components/home/progress-strip";
 import { WelcomeCard } from "@/components/home/welcome-card";
+import { PrepProgressCard } from "@/components/prep/progress-card";
 import { Card, CardHeader } from "@/components/ui/card";
 import { dateKeyInZone } from "@/lib/applications/dates";
 import { requireUser } from "@/lib/auth/dal";
@@ -95,7 +96,7 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
           <div className="order-3 lg:order-none">
             <AttentionList items={attention} />
           </div>
-          <div className="order-6 lg:order-none">
+          <div className="order-7 lg:order-none">
             <ActivityFeed items={activity} now={now} timeZone={timeZone} />
           </div>
         </div>
@@ -115,7 +116,10 @@ export default async function HomePage({ searchParams }: PageProps<"/home">) {
               <PrepRecommendations items={recommendations} />
             </div>
           ) : null}
-          <div className="order-7 lg:order-none">
+          <div className="order-6 lg:order-none">
+            <PrepProgressCard snapshot={snapshot} />
+          </div>
+          <div className="order-8 lg:order-none">
             <MiniStats stats={stats} />
           </div>
         </div>
