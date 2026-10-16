@@ -207,7 +207,7 @@ export default async function ModulePage({ params }: PageProps<"/prep/[moduleId]
           <section id="resources" aria-labelledby="resources-title" className="mt-16 scroll-mt-24">
             <SectionTitle id="resources-title" icon="bookmark" title="Resources" kicker="Go deeper" />
             {resources.length > 0 ? (
-              <ul className="grid gap-4 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {resources.map((r) => (
                   <li key={r.id}>
                     <ResourceCard resource={r} actions={<ResourceProgressActions resource={{ id: r.id, title: r.title }} />} />
@@ -245,7 +245,7 @@ export default async function ModulePage({ params }: PageProps<"/prep/[moduleId]
             </Suspense>
           </section>
 
-          <nav aria-label="Module navigation" className="mt-8 grid gap-3 sm:grid-cols-2">
+          <nav aria-label="Module navigation" className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {prev ? (
               <Link
                 href={`/prep/${prev.id}`}

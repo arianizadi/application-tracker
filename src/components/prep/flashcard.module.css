@@ -1,11 +1,13 @@
 /* Flashcard flip. 3D rotate normally; a plain crossfade under reduced motion. */
 
 .scene {
-  perspective: 1600px;
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Perspective sits on the card's direct parent: .drag's transform flattens, so a
+   perspective on .scene would never reach the flip. */
 .drag {
+  perspective: 1600px;
   touch-action: pan-y;
   will-change: transform;
 }

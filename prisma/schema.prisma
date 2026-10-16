@@ -116,6 +116,7 @@ model Application {
   @@index([userId, status])
   @@index([userId, appliedAt])
   @@index([userId, updatedAt])
+  @@index([userId, createdAt])
   @@index([resumeId])
   @@map("applications")
 }

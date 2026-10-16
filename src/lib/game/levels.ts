@@ -4,7 +4,10 @@ export type Level = {
   minXp: number;
   /** One-line flavor text shown when previewing or reaching the level. */
   blurb: string;
-  /** The small forest detail this level adds. */
+  /**
+   * Flavor text for a forest detail this level could add. Not drawn anywhere yet
+   * (deriveForest ignores levels), so UI copy must not promise it.
+   */
   accent: string;
 };
 

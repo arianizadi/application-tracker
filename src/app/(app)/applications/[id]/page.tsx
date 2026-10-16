@@ -65,12 +65,12 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
         <header className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h1 className="break-words text-3xl font-semibold leading-[1.1] sm:text-4xl">{app.company}</h1>
-            <p className="mt-1.5 text-lg text-ink-soft">{app.role}</p>
+            <p className="mt-1.5 break-words text-lg text-ink-soft">{app.role}</p>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
               {facts.map((f) => (
-                <span key={f.text} className="inline-flex items-center gap-1.5">
-                  <AppIcon name={f.icon} className="size-4" />
-                  {f.text}
+                <span key={f.text} className="inline-flex min-w-0 max-w-full items-center gap-1.5 [overflow-wrap:anywhere]">
+                  <AppIcon name={f.icon} className="size-4 shrink-0" />
+                  <span className="min-w-0">{f.text}</span>
                 </span>
               ))}
               <Hearts value={app.excitement} />
@@ -82,7 +82,16 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <Card className="p-5 sm:p-6">
-          <StatusPanel id={app.id} company={app.company} status={app.status} history={app.history} timeZone={user.timeZone} nowMs={now.getTime()} />
+          <StatusPanel
+            id={app.id}
+            company={app.company}
+            status={app.status}
+            history={app.history}
+            timeZone={user.timeZone}
+            nowMs={now.getTime()}
+            todayKey={todayKey}
+            minDateKey={appliedKey || dateKeyInZone(app.createdAt, user.timeZone)}
+          />
         </Card>
 
         <aside className="flex flex-col gap-6 lg:sticky lg:top-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -101,7 +110,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
           <Card className="p-5">
             <h2 className="text-lg font-semibold leading-tight">Resume sent</h2>
             {app.resume ? (
-              <Link href="/resumes" className="mt-3 flex items-center gap-3 rounded-2xl border border-line bg-paper-2/60 p-3 transition-colors hover:border-line-strong">
+              <Link href={`/resumes/${app.resume.id}`} className="mt-3 flex items-center gap-3 rounded-2xl border border-line bg-paper-2/60 p-3 transition-colors hover:border-line-strong">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-card text-bark">
                   <AppIcon name="file" className="size-5" />
                 </span>

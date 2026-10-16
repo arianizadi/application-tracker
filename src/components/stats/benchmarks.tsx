@@ -9,7 +9,7 @@ import {
   type Benchmark,
   type Verdict,
 } from "@/lib/stats/benchmarks";
-import type { Rate } from "@/lib/stats/compute";
+import { isTooEarly, type Rate } from "@/lib/stats/compute";
 import { pct } from "@/lib/stats/format";
 
 const VERDICT_STYLE: Record<Verdict["level"], { chip: string; icon: React.ReactNode }> = {
@@ -144,7 +144,7 @@ export function BenchmarksSection({
           <ul className="mt-3 flex flex-col gap-3 text-sm leading-relaxed text-ink-soft">
             {NO_BENCHMARK.map((n) => (
               <li key={n.key}>
-                <span className="font-medium text-ink">{n.label}{n.key === "reply" && reply.den ? ` (yours: ${pct(reply.value)}, ${reply.num} of ${reply.den})` : ""}.</span>{" "}
+                <span className="font-medium text-ink">{n.label}{n.key === "reply" && !isTooEarly(reply) ? ` (yours: ${pct(reply.value)}, ${reply.num} of ${reply.den})` : ""}.</span>{" "}
                 {n.note}
               </li>
             ))}

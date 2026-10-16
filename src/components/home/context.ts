@@ -376,6 +376,8 @@ const STATUS_VERB: Record<ApplicationStatus, { lead: string; tail?: (role: strin
   WITHDRAWN: { lead: "Stepped away from", tail: () => "your call" },
 };
 
+const MAX_ANALYSIS_ROWS = 3;
+
 export function recentActivity(snapshot: UserSnapshot, limit = 8): ActivityItem[] {
   const items: ActivityItem[] = [];
   for (const app of snapshot.applications) {
@@ -403,14 +405,27 @@ export function recentActivity(snapshot: UserSnapshot, limit = 8): ActivityItem[
       at: toDate(r.createdAt),
     });
   }
-  for (const a of snapshot.analyses.slice(0, limit)) {
+  // Back-to-back runs against the same target (analyses are newest first) collapse
+  // into one row, and analyzer rows are capped so status changes keep their room.
+  const runs: { a: UserSnapshot["analyses"][number]; count: number; best: number }[] = [];
+  for (const a of snapshot.analyses) {
+    const prev = runs.at(-1);
+    if (prev && prev.a.title === a.title && prev.a.preset === a.preset && prev.a.resumeId === a.resumeId) {
+      prev.count++;
+      prev.best = Math.max(prev.best, a.score);
+    } else {
+      if (runs.length >= MAX_ANALYSIS_ROWS) break;
+      runs.push({ a, count: 1, best: a.score });
+    }
+  }
+  for (const { a, count, best } of runs) {
     items.push({
       key: `analysis:${a.id}`,
       kind: "ANALYSIS",
       href: "/analyzer",
       lead: "Rue checked",
       subject: a.title || "a resume",
-      tail: `${Math.round(a.score)}% coverage`,
+      tail: count > 1 ? `${count}× · best ${Math.round(best)}% coverage` : `${Math.round(a.score)}% coverage`,
       at: toDate(a.createdAt),
     });
   }

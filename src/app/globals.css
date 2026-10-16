@@ -22,7 +22,7 @@
   --card: #fffdf7;
   --ink: #1d2a1f;
   --ink-soft: #46574a;
-  --muted: #7a8577;
+  --muted: #5f6a5c;
   --line: #e2d8c3;
   --line-strong: #cdbf9f;
 
@@ -34,6 +34,11 @@
   --sun-soft: #fdf0d9;
   --coral: #e0674b;
   --coral-soft: #fbe5de;
+  /* Coral for text (4.7:1 on coral-soft) and solid fills under white labels (4.6:1). */
+  --coral-ink: #b2412a;
+  --coral-strong: #c4502f;
+  --on-coral: #ffffff;
+  --on-berry: #ffffff;
   --sky: #7fbfdc;
   --sky-soft: #e2f1f7;
   --berry: #a8436b;
@@ -42,6 +47,8 @@
   --night: #132019;
 
   --focus: #2f7a5b;
+  /* Top of the mobile tab bar; fixed bottom UI (toasts, undo, toolbars) sits above it. */
+  --dock-bottom: calc(4.125rem + max(0.75rem, env(safe-area-inset-bottom)));
   --shadow: 30 40 25;
   color-scheme: light;
 }
@@ -64,6 +71,10 @@
     --sun-soft: #3a2f1b;
     --coral: #f08a70;
     --coral-soft: #3b2219;
+    --coral-ink: #f08a70;
+    --coral-strong: #f08a70;
+    --on-coral: var(--night);
+    --on-berry: var(--night);
     --sky: #8fd0ea;
     --sky-soft: #183140;
     --berry: #e07fa5;
@@ -92,6 +103,10 @@
   --sun-soft: #3a2f1b;
   --coral: #f08a70;
   --coral-soft: #3b2219;
+  --coral-ink: #f08a70;
+  --coral-strong: #f08a70;
+  --on-coral: var(--night);
+  --on-berry: var(--night);
   --sky: #8fd0ea;
   --sky-soft: #183140;
   --berry: #e07fa5;
@@ -119,6 +134,10 @@
   --color-sun-soft: var(--sun-soft);
   --color-coral: var(--coral);
   --color-coral-soft: var(--coral-soft);
+  --color-coral-ink: var(--coral-ink);
+  --color-coral-strong: var(--coral-strong);
+  --color-on-coral: var(--on-coral);
+  --color-on-berry: var(--on-berry);
   --color-sky: var(--sky);
   --color-sky-soft: var(--sky-soft);
   --color-berry: var(--berry);
@@ -170,43 +189,47 @@
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 
-html {
-  -webkit-text-size-adjust: 100%;
-  text-rendering: optimizeLegibility;
-  scroll-padding-top: 5rem;
-}
+/* Element defaults live in the base layer so Tailwind utilities (font-sans,
+   tracking-*, focus:outline-none, rounded-*) can override them. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: 5rem;
+  }
 
-body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
-}
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
 
-h1, h2, h3, .font-display {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  font-variation-settings: "SOFT" 60, "WONK" 0;
-  letter-spacing: -0.015em;
-  text-wrap: balance;
-}
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 60, "WONK" 0;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
 
-p {
-  text-wrap: pretty;
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--leaf) 45%, transparent);
+  }
+
+  /* Outlines follow each element's own border-radius. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
-}
-
-::selection {
-  background: color-mix(in oklab, var(--leaf) 45%, transparent);
-}
-
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: 6px;
 }
 
 /* Comfortable tap targets and no 300ms delay on touch devices. */
@@ -226,6 +249,12 @@ button, a, input, select, textarea, label {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+/* Landscape notch / sensor housing (viewport-fit=cover). Zero on most devices. */
+.px-safe {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 /* Subtle paper grain via a tiny inline SVG noise (no network request). */
 .grain {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
@@ -238,4 +267,23 @@ button, a, input, select, textarea, label {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Horizontal scroll cue for overflowing blocks (code, diagrams). The "local"
+   covers scroll with the content and hide the "scroll" shadows at whichever edge
+   has nothing hidden, so the fade only shows where there is more to see. Set
+   --scroll-fade-bg to the surface color behind the element (default paper-2). */
+@utility scroll-fade-x {
+  --_fade-bg: var(--scroll-fade-bg, var(--color-paper-2));
+  --_fade-shadow: color-mix(in oklab, var(--color-ink) 16%, transparent);
+  background-image:
+    linear-gradient(to right, var(--_fade-bg) 30%, transparent),
+    linear-gradient(to left, var(--_fade-bg) 30%, transparent),
+    radial-gradient(farthest-side at 0 50%, var(--_fade-shadow), transparent),
+    radial-gradient(farthest-side at 100% 50%, var(--_fade-shadow), transparent);
+  background-position: left center, right center, left center, right center;
+  background-size: 28px 100%, 28px 100%, 12px 100%, 12px 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+  scrollbar-width: thin;
 }

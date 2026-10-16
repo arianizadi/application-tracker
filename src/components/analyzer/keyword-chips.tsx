@@ -52,7 +52,7 @@ export function KeywordChips({ items, tone, empty }: { items: (FoundTerm | Missi
                       ? "border-moss bg-moss text-paper"
                       : "border-moss/30 bg-moss-soft text-moss-strong hover:border-moss"
                     : selected
-                      ? "border-coral bg-coral text-white"
+                      ? "border-coral-strong bg-coral-strong text-on-coral"
                       : "border-coral/35 bg-coral-soft text-ink hover:border-coral"
                 }`}
               >

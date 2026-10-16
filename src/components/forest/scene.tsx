@@ -485,7 +485,8 @@ export function ForestScene({
       )}
 
       {full && <Weather state={state} p={p} animate={animate} />}
-      <rect className={styles.dim} width={VIEW_W} height={VIEW_H} fill={night ? "#000000" : "#0b1220"} />
+      {/* opacity={0} is overridden by the .dim rule; it keeps the forest visible if styling ever fails. */}
+      <rect className={styles.dim} opacity={0} width={VIEW_W} height={VIEW_H} fill={night ? "#000000" : "#0b1220"} />
     </svg>
   );
 }

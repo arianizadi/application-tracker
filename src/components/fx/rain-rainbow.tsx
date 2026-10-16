@@ -42,8 +42,9 @@ type RainProps = {
 
 /**
  * Gentle rejection overlay: a short soft rain, then a small rainbow behind Prickle with a
- * comforting line. Auto-closes after `duration` (paused while hovered/focused), and closes on
- * Escape, backdrop tap, or the button. Reduced motion / `calm`: no rain, static rainbow.
+ * comforting line. A toast-like note, not a modal: the page underneath stays clickable and
+ * focus isn't moved. Auto-closes after `duration` (paused while hovered/focused), and closes
+ * on Escape or the button. Reduced motion / `calm`: no rain, static rainbow.
  */
 export function RainThenRainbow(props: RainProps) {
   const isClient = useIsClient();
@@ -91,12 +92,11 @@ function RainOverlay({
   const delay = still ? "0ms" : "1100ms";
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" onClick={() => onClose()}>
+    <div className="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div aria-hidden className="absolute inset-0 animate-fade bg-paper/60 backdrop-blur-[2px]" />
       <section
         aria-label={`A note from ${info.name}`}
-        className="relative flex w-full max-w-sm flex-col items-center text-center"
-        onClick={(e) => e.stopPropagation()}
+        className="pointer-events-auto relative flex w-full max-w-sm flex-col items-center text-center"
         onPointerEnter={() => setPinned(true)}
         onFocusCapture={() => setPinned(true)}
       >

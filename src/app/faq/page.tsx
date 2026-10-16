@@ -62,8 +62,8 @@ export default function FaqPage() {
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto">
               <ButtonLink href="/signup">Get started</ButtonLink>
-              <ButtonLink href="/home" variant="ghost">
-                Back to my forest
+              <ButtonLink href="/home" variant="ghost" prefetch={false}>
+                Open Canopy
               </ButtonLink>
             </div>
           </aside>

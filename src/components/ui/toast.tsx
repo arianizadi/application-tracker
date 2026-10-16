@@ -38,13 +38,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-24 z-[60] flex flex-col items-center gap-2 px-4 md:bottom-6 md:items-end md:pr-6"
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--dock-bottom)+0.75rem+var(--bottom-ui-h,0px))] z-[60] flex flex-col items-center gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:bottom-[calc(1.5rem+var(--bottom-ui-h,0px))] md:items-end md:pr-[max(1.5rem,env(safe-area-inset-right))]"
       >
         {toasts.map((t) => (
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto flex w-full max-w-sm animate-rise items-start gap-3 rounded-2xl border bg-card px-4 py-3 shadow-lift ${toneClass[t.tone]}`}
+            className={`flex w-full max-w-sm animate-rise items-start gap-3 rounded-2xl border bg-card px-4 py-3 shadow-lift ${toneClass[t.tone]}`}
           >
             <span aria-hidden className={`mt-1.5 size-2.5 shrink-0 rounded-full ${toneDot[t.tone]}`} />
             <div className="min-w-0">

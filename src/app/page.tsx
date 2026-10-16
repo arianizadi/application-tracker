@@ -18,6 +18,7 @@ import { PublicHeader } from "@/components/marketing/public-header";
 import { Mascot, MASCOTS, type MascotName } from "@/components/mascots";
 import { ButtonLink } from "@/components/ui/button";
 import { demoForest } from "@/lib/forest/derive";
+import { XP } from "@/lib/game/xp";
 
 export const metadata: Metadata = {
   title: { absolute: "Canopy — grow your internship search" },
@@ -191,13 +192,13 @@ export default function Landing() {
               <br />
               <span className="italic text-moss">plants a tree.</span>
             </h1>
-            <div className="mt-8 grid gap-8 lg:grid-cols-12 lg:items-end">
-              <p className="animate-rise text-lg leading-relaxed text-ink-soft sm:text-xl lg:col-span-7" style={{ animationDelay: "120ms" }}>
+            <div className="mt-8 flex max-w-2xl flex-col gap-8">
+              <p className="animate-rise text-lg leading-relaxed text-ink-soft sm:text-xl" style={{ animationDelay: "120ms" }}>
                 Applying for internships is a lot. Canopy makes the boring parts fast and the progress visible: log an
                 application in seconds, keep your resume versions straight, prep for interviews, and watch a forest grow from
                 your effort. Even the rejections become compost.
               </p>
-              <div className="flex animate-rise flex-col gap-3 sm:flex-row lg:col-span-5 lg:justify-end" style={{ animationDelay: "180ms" }}>
+              <div className="flex animate-rise flex-col gap-3 sm:flex-row" style={{ animationDelay: "180ms" }}>
                 <ButtonLink href="/signup" size="lg">
                   Start growing — it&apos;s free
                 </ButtonLink>
@@ -206,7 +207,7 @@ export default function Landing() {
                 </ButtonLink>
               </div>
             </div>
-            <p className="mt-4 text-sm text-muted lg:text-right">No credit card. No streak guilt. Export everything, anytime.</p>
+            <p className="mt-4 text-sm text-muted">No credit card. No streak guilt. Export everything, anytime.</p>
           </div>
 
           {/* Forest window */}
@@ -225,7 +226,7 @@ export default function Landing() {
               />
               <Toast
                 mascot="clover"
-                title="Planted! +10 XP"
+                title={`Planted! +${XP.added + XP.submitted} XP`}
                 body="Security Analyst Intern · Hollow Oak Bank"
                 className="-bottom-6 left-3 animate-float sm:left-8"
               />

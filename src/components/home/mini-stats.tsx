@@ -1,12 +1,14 @@
 import Link from "next/link";
 
-import type { Stats } from "@/lib/stats/compute";
+import { isTooEarly, type Stats } from "@/lib/stats/compute";
 import { ratePct } from "@/lib/stats/format";
 
 /** Three honest numbers with their denominators; the whole card opens /stats. */
 export function MiniStats({ stats }: { stats: Stats }) {
   const reply = stats.rates.reply;
   const interview = stats.rates.interview;
+  // Same rule as the /stats tiles: a tiny all-hits sample with newer apps left out reads as "—".
+  const replyEarly = isTooEarly(reply);
 
   const tiles = [
     {
@@ -16,8 +18,8 @@ export function MiniStats({ stats }: { stats: Stats }) {
     },
     {
       label: "Response rate",
-      value: ratePct(reply),
-      hint: reply.den ? `${reply.num} of ${reply.den} replied` : "Needs a week or so",
+      value: replyEarly ? "—" : ratePct(reply),
+      hint: reply.den === 0 ? "Needs a week or so" : replyEarly ? `${reply.num} heard back so far` : `${reply.num} of ${reply.den} replied`,
     },
     {
       label: "Interviews",
@@ -47,7 +49,7 @@ export function MiniStats({ stats }: { stats: Stats }) {
           </div>
         ))}
       </dl>
-      {reply.lowSample && reply.den > 0 ? (
+      {reply.lowSample && reply.den > 0 && !replyEarly ? (
         <p className="mt-3 text-xs text-muted">A few leaves don&apos;t make a trend yet. Counts first, percentages later.</p>
       ) : null}
     </Link>

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
+// Only force https where it is actually served (Vercel, or opted in); `next start` over plain http
+// would otherwise upgrade same-origin redirects to https://localhost and fail.
+const upgradeInsecure = !isDev && (process.env.VERCEL === "1" || process.env.FORCE_HTTPS === "1");
 
 const cspDirectives = (frameAncestors: string) => [
   "default-src 'self'",
@@ -14,7 +17,7 @@ const cspDirectives = (frameAncestors: string) => [
   "base-uri 'self'",
   "form-action 'self'",
   `frame-ancestors ${frameAncestors}`,
-  ...(isDev ? [] : ["upgrade-insecure-requests"]),
+  ...(upgradeInsecure ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const contentSecurityPolicy = cspDirectives("'none'");
@@ -46,6 +49,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        // Without this, `as: "*.css"` also renames `*.module.css` and strips CSS-Module semantics.
+        condition: { not: { path: /\.module\.css$/ } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },

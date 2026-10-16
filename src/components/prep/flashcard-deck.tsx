@@ -20,7 +20,7 @@ export type DeckModuleOption = { id: string; number: number; title: string };
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "all", label: "All cards" },
-  { key: "unknown", label: "Not known yet" },
+  { key: "unknown", label: "To learn" },
   { key: "learning", label: "Learning" },
 ];
 
@@ -144,10 +144,14 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
   };
 
   /* ── Keyboard ─────────────────────────────────────────────────────────── */
+  // Single-key shortcuts only fire while focus is inside the deck (WCAG 2.1.4),
+  // and never from the filter/module controls, where arrows and letters mean something else.
+  const root = useRef<HTMLDivElement>(null);
   const onKey = useEffectEvent((e: KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target instanceof HTMLElement ? e.target : null;
-    if (t?.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (!t || !root.current?.contains(t)) return;
+    if (t.closest("input, textarea, select, [contenteditable='true'], [role='group']")) return;
     // Space on a focused button already clicks it (the card's click flips it).
     if (e.key === " " && t?.closest("button, a, summary")) return;
     if (e.key === " ") {
@@ -199,7 +203,7 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
   const state = card ? states[card.id] : undefined;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div ref={root} className="flex flex-col gap-6">
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div role="group" aria-label="Which cards" className="inline-flex w-full rounded-full border border-line bg-paper-2/70 p-1 sm:w-auto">
@@ -284,7 +288,10 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
           aria-valuemax={deck.length}
           aria-valuenow={knownInDeck}
         >
-          <div className="h-full rounded-full bg-gradient-to-r from-sun to-leaf transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          <div
+            className="h-full w-full rounded-full bg-gradient-to-r from-sun to-leaf transition-transform duration-500 motion-reduce:transition-none"
+            style={{ transform: `translateX(${pct - 100}%)` }}
+          />
         </div>
       </div>
 
@@ -384,7 +391,7 @@ export function FlashcardDeck({ initial, modules }: { initial: ProgressMap; modu
             </button>
           </div>
           <p className="hidden text-center text-xs text-muted sm:block">
-            <kbd className="font-mono">Space</kbd> flip · <kbd className="font-mono">←</kbd> <kbd className="font-mono">→</kbd> move · <kbd className="font-mono">K</kbd> know it ·{" "}
+            With the card focused: <kbd className="font-mono">Space</kbd> flip · <kbd className="font-mono">←</kbd> <kbd className="font-mono">→</kbd> move · <kbd className="font-mono">K</kbd> know it ·{" "}
             <kbd className="font-mono">L</kbd> still learning
           </p>
           <p className="text-center text-xs text-muted sm:hidden">Swipe left or right to move between cards.</p>

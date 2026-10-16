@@ -38,10 +38,10 @@ export default function NotFound() {
           <p className="mt-3 text-lg text-ink-soft">Your applications are still where you left them.</p>
           <p className="mt-1 animate-fade text-sm italic text-muted [animation-delay:1.6s]">Tuck has filed a map correction.</p>
           <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-            <ButtonLink href="/home" size="lg">
+            <ButtonLink href="/home" size="lg" prefetch={false}>
               Back to the clearing
             </ButtonLink>
-            <ButtonLink href="/applications" variant="secondary" size="lg">
+            <ButtonLink href="/applications" variant="secondary" size="lg" prefetch={false}>
               View applications
             </ButtonLink>
           </div>

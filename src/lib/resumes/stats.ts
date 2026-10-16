@@ -41,7 +41,7 @@ function everReached(app: SnapshotApplication, set: ApplicationStatus[]): boolea
 }
 
 function isSubmitted(app: SnapshotApplication): boolean {
-  return app.status !== "WISHLIST" || app.appliedAt !== null;
+  return app.appliedAt !== null || (app.status !== "WISHLIST" && app.status !== "WITHDRAWN");
 }
 
 export function emptyStats(): VersionStats {

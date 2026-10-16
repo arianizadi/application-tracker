@@ -36,18 +36,15 @@ function savedLabel(savedAt: number | null) {
  * and pasted text autosave to this device so a closed tab loses nothing.
  */
 export function UploadCard({
-  userId,
   suggestedLabel,
   nextVersion,
   hasVersions,
 }: {
-  /** Scopes the local draft to the signed-in account on shared devices. */
-  userId: string;
   suggestedLabel: string;
   nextVersion: number;
   hasVersions: boolean;
 }) {
-  const { value, setValue, restored, savedAt, reset } = useAutosave<Draft>(`resume:new:${userId}`, EMPTY);
+  const { value, setValue, restored, savedAt, reset } = useAutosave<Draft>("resume:new", EMPTY);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -313,7 +310,7 @@ export function UploadCard({
         ) : null}
 
         {result?.error ? (
-          <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral">
+          <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">
             {result.error}
           </p>
         ) : null}

@@ -26,9 +26,13 @@ export type ResumeListItem = {
 /**
  * Every resume version for a user, newest first, with derived word counts and
  * consecutive-version diffs. The text itself never leaves this function.
+ *
+ * Remote-cached: a miss reads every version's full text (up to 40 x 60k chars),
+ * while the derived list is a few KB, so it is worth sharing across instances
+ * and surviving cold starts.
  */
 export async function getResumeLibrary(userId: string): Promise<ResumeListItem[]> {
-  "use cache";
+  "use cache: remote";
   cacheLife("days");
   cacheTag(userTag(userId, "resumes"));
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { DragEvent } from "react";
 
 import { StatusPill } from "@/components/ui/status-pill";
-import { dateToKey, daysBetween, daysBetweenKeys, shortDuration } from "@/lib/applications/dates";
+import { dateKeyInZone, dateToKey, daysBetween, daysBetweenKeys, shortDuration } from "@/lib/applications/dates";
 import { isQuiet, lastActivityAt } from "@/lib/applications/filter";
 import { WORK_MODE_LABEL } from "@/lib/applications/schema";
 import type { ApplicationListItem } from "@/lib/applications/types";
@@ -23,6 +23,8 @@ export function isTemp(id: string) {
 export type CardProps = {
   item: ApplicationListItem;
   todayKey: string;
+  /** The user's zone, for real instants like createdAt. */
+  timeZone: string;
   nowMs: number;
   /** Board cards hide the status pill (the column says it); list cards show it. */
   variant?: "board" | "list";
@@ -37,12 +39,13 @@ export type CardProps = {
   highlight?: boolean;
 };
 
-function appliedLabel(item: ApplicationListItem, todayKey: string): string | null {
-  if (item.status === "WISHLIST") {
-    const days = daysBetweenKeys(dateToKey(item.createdAt), todayKey);
+function appliedLabel(item: ApplicationListItem, todayKey: string, timeZone: string): string | null {
+  // Wishlist items, and ones withdrawn before they were ever sent, only have a save date.
+  if (item.status === "WISHLIST" || !item.appliedAt) {
+    // createdAt is a real instant (its day depends on the zone); appliedAt is a stored calendar day.
+    const days = daysBetweenKeys(dateKeyInZone(new Date(item.createdAt), timeZone), todayKey);
     return days <= 0 ? "Saved today" : `Saved ${shortDuration(days)} ago`;
   }
-  if (!item.appliedAt) return null;
   const days = daysBetweenKeys(dateToKey(item.appliedAt), todayKey);
   return days <= 0 ? "Applied today" : `Applied ${shortDuration(days)} ago`;
 }
@@ -50,6 +53,7 @@ function appliedLabel(item: ApplicationListItem, todayKey: string): string | nul
 export function ApplicationCard({
   item,
   todayKey,
+  timeZone,
   nowMs,
   variant = "board",
   selectMode = false,
@@ -64,7 +68,7 @@ export function ApplicationCard({
 }: CardProps) {
   const temp = isTemp(item.id);
   const quiet = isQuiet(item, nowMs);
-  const applied = appliedLabel(item, todayKey);
+  const applied = appliedLabel(item, todayKey, timeZone);
   const meta = [applied, item.workMode ? WORK_MODE_LABEL[item.workMode] : null, item.source].filter(Boolean).join(" · ");
   const name = `${item.company} — ${item.role}`;
 
@@ -99,7 +103,7 @@ export function ApplicationCard({
           </span>
         ) : null}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-sans text-[15px] font-semibold leading-snug tracking-normal">
+          <h3 title={item.company} className="truncate font-sans text-[15px] font-semibold leading-snug tracking-normal">
             {selectMode || temp ? (
               item.company
             ) : (
@@ -127,6 +131,7 @@ export function ApplicationCard({
             <button
               type="button"
               onClick={() => onMove(item)}
+              data-move-id={item.id}
               aria-label={`Change status of ${name}, currently ${STATUS_META[item.status].label}`}
               className="relative z-10 -my-1 -mr-1 flex min-h-11 items-center rounded-full px-1"
             >
@@ -136,6 +141,7 @@ export function ApplicationCard({
             <button
               type="button"
               onClick={() => onMove(item)}
+              data-move-id={item.id}
               aria-label={`Move ${name} to another stage`}
               title="Move to…"
               className="relative z-10 -mr-1.5 -mt-1.5 flex size-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-paper-2 hover:text-ink md:size-9 md:opacity-60 md:group-hover:opacity-100 md:focus-visible:opacity-100"

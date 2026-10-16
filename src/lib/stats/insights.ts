@@ -261,12 +261,15 @@ export function getInsights(stats: Stats, options: { limit?: number } = {}): Ins
 
   /* Response time. */
   if (stats.responseTime.n >= 3 && stats.responseTime.median !== null) {
+    const sameDay = stats.responseTime.median < 1;
     out.push({
       id: "response-time",
       tone: "info",
       mascot: "tuck",
-      title: `Replies take about ${days(stats.responseTime.median)} for you`,
-      body: `Median across ${stats.responseTime.n} replies. So a quiet week after applying is normal, not a sign.`,
+      title: sameDay ? "Your replies have come within a day" : `Replies take about ${days(stats.responseTime.median)} for you`,
+      body: sameDay
+        ? `Median across ${stats.responseTime.n} replies. That's quick; most companies take longer, so a quiet week after applying is still normal.`
+        : `Median across ${stats.responseTime.n} replies. So a quiet week after applying is normal, not a sign.`,
       priority: 40,
     });
   }

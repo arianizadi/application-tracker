@@ -34,7 +34,7 @@ export default async function ResumesPage() {
   const track = TRACK_SHORT[user.track] ?? TRACKS.find((t) => t.key === user.track)?.label ?? "General";
   const suggestedLabel = `${track} — ${monthName(now, user.timeZone)}`;
 
-  const upload = <UploadCard userId={user.id} suggestedLabel={suggestedLabel} nextVersion={nextVersion} hasVersions={library.length > 0} />;
+  const upload = <UploadCard suggestedLabel={suggestedLabel} nextVersion={nextVersion} hasVersions={library.length > 0} />;
 
   if (library.length === 0) {
     return (

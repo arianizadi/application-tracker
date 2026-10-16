@@ -17,15 +17,19 @@ function CategoryBars({ result }: { result: AnalysisResult }) {
         <li key={c.id}>
           <details className="group rounded-xl px-2 py-1.5 open:bg-paper-2/60">
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-lg [&::-webkit-details-marker]:hidden">
-              <span className="w-32 shrink-0 truncate text-sm font-medium text-ink sm:w-44">{c.label}</span>
+              <span className="w-24 shrink-0 truncate text-sm font-medium text-ink sm:w-44">{c.label}</span>
               <span className="relative h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line" aria-hidden>
                 <span
-                  className="absolute inset-y-0 left-0 rounded-full bg-moss transition-[width] duration-700 ease-out"
-                  style={{ width: `${Math.max(c.pct, c.pct > 0 ? 4 : 0)}%` }}
+                  className="absolute inset-0 rounded-full bg-moss transition-transform duration-700 ease-out motion-reduce:transition-none"
+                  style={{ transform: `translateX(${Math.max(c.pct, c.pct > 0 ? 4 : 0) - 100}%)` }}
                 />
               </span>
-              <span className="w-16 shrink-0 text-right text-xs text-muted tabular">
-                {c.found}/{c.total}
+              {/* The bar shows pct, so the label leads with pct too; the raw count is secondary. */}
+              <span className="w-14 shrink-0 text-right text-xs tabular sm:w-20" aria-hidden>
+                <span className="font-semibold text-ink">{c.pct}%</span>
+                <span className="block text-[11px] text-muted">
+                  {c.found} of {c.total}
+                </span>
               </span>
               <span className="sr-only">{`${c.pct}% filled, ${c.found} of ${c.total} mentioned. Show tip.`}</span>
               <svg viewBox="0 0 16 16" aria-hidden className="size-4 shrink-0 text-muted transition-transform duration-150 group-open:rotate-90" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme";
+import { clearAllDrafts } from "@/hooks/use-autosave";
+import { logout } from "@/lib/auth/actions";
 
 import { Icon } from "./icon";
 import { Logo } from "./logo";
-import { NAV } from "./nav-items";
+import { HELP_ITEM, NAV } from "./nav-items";
 
 function isActive(pathname: string | null, href: string) {
   if (!pathname) return false;
@@ -67,6 +69,14 @@ function SideNavView({ footer, pathname }: { footer?: React.ReactNode; pathname:
       </nav>
       <div className="flex flex-col gap-4 border-t border-line pt-4">
         {footer}
+        <Link
+          href={HELP_ITEM.href}
+          aria-current={isActive(pathname, HELP_ITEM.href) ? "page" : undefined}
+          className="-my-1 flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-card/60 hover:text-ink"
+        >
+          <Icon name={HELP_ITEM.icon} className="size-5" />
+          {HELP_ITEM.label}
+        </Link>
         <ThemeToggle className="self-start" />
       </div>
     </aside>
@@ -87,6 +97,8 @@ function LiveMobileNav() {
 
 function MobileNavView({ pathname }: { pathname: string | null }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreBtn = useRef<HTMLButtonElement>(null);
+  const firstLink = useRef<HTMLAnchorElement>(null);
   const primary = NAV.filter((n) => n.mobile);
   const secondary = NAV.filter((n) => !n.mobile);
 
@@ -94,6 +106,19 @@ function MobileNavView({ pathname }: { pathname: string | null }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- close the sheet after navigating
     setMoreOpen(false);
   }, [pathname]);
+
+  // Move focus into the sheet when it opens; Escape closes it and returns focus.
+  useEffect(() => {
+    if (!moreOpen) return;
+    firstLink.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMoreOpen(false);
+      moreBtn.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [moreOpen]);
 
   return (
     <>
@@ -104,28 +129,6 @@ function MobileNavView({ pathname }: { pathname: string | null }) {
         </Link>
         <ThemeToggle />
       </header>
-
-      {moreOpen ? (
-        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMoreOpen(false)}>
-          <div className="absolute inset-0 animate-fade bg-night/30 backdrop-blur-[2px]" />
-          <nav
-            aria-label="More"
-            onClick={(e) => e.stopPropagation()}
-            className="absolute inset-x-3 bottom-24 animate-rise rounded-3xl border border-line bg-card p-2 shadow-lift"
-          >
-            {secondary.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={isActive(pathname, item.href) ? "page" : undefined}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-[15px] font-medium text-ink-soft aria-[current=page]:bg-paper-2 aria-[current=page]:text-ink"
-              >
-                <Icon name={item.icon} /> {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      ) : null}
 
       <nav
         aria-label="Main"
@@ -149,9 +152,11 @@ function MobileNavView({ pathname }: { pathname: string | null }) {
           ))}
           <li>
             <button
+              ref={moreBtn}
               type="button"
               onClick={() => setMoreOpen((o) => !o)}
               aria-expanded={moreOpen}
+              aria-controls="more-menu"
               className={`flex w-full flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] font-medium ${
                 moreOpen || secondary.some((s) => isActive(pathname, s.href)) ? "text-moss" : "text-muted"
               }`}
@@ -162,6 +167,45 @@ function MobileNavView({ pathname }: { pathname: string | null }) {
           </li>
         </ul>
       </nav>
+
+      {moreOpen ? (
+        <div className="fixed inset-0 z-40 md:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 animate-fade bg-night/30 backdrop-blur-[2px]" />
+          <nav
+            id="more-menu"
+            aria-label="More"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-3 bottom-24 animate-rise rounded-3xl border border-line bg-card p-2 shadow-lift"
+          >
+            {secondary.map((item, i) => (
+              <Link
+                key={item.href}
+                ref={i === 0 ? firstLink : undefined}
+                href={item.href}
+                aria-current={isActive(pathname, item.href) ? "page" : undefined}
+                className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-[15px] font-medium text-ink-soft aria-[current=page]:bg-paper-2 aria-[current=page]:text-ink"
+              >
+                <Icon name={item.icon} /> {item.label}
+              </Link>
+            ))}
+            <Link
+              href={HELP_ITEM.href}
+              className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-[15px] font-medium text-ink-soft"
+            >
+              <Icon name={HELP_ITEM.icon} /> {HELP_ITEM.label}
+            </Link>
+            {/* The sidebar's sign-out (UserBadge) is hidden below md. */}
+            <form action={logout} onSubmit={() => clearAllDrafts()} className="mt-1 border-t border-line pt-1">
+              <button
+                type="submit"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-[15px] font-medium text-ink-soft hover:text-ink"
+              >
+                <Icon name="logout" /> Sign out
+              </button>
+            </form>
+          </nav>
+        </div>
+      ) : null}
     </>
   );
 }

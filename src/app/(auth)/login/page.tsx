@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { safeNext } from "@/lib/auth/safe-next";
+
 import { AuthForm } from "../auth-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 async function LoginForm({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const { next } = await searchParams;
-  return <AuthForm mode="login" next={typeof next === "string" ? next : undefined} />;
+  // Sanitize here too so a hostile value never reaches the hidden input.
+  return <AuthForm mode="login" next={typeof next === "string" ? safeNext(next) : undefined} />;
 }
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {

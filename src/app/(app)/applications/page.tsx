@@ -18,6 +18,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
     <ApplicationsView
       items={items}
       todayKey={dateKeyInZone(now, user.timeZone)}
+      timeZone={user.timeZone}
       nowMs={now.getTime()}
       initialFilters={filtersFromSearchParams(params)}
     />

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCelebrationIntensity, type CelebrationIntensity } from "@/components/fx";
+import { radioKeyNav } from "@/lib/radio-keys";
 
 const OPTIONS: { value: CelebrationIntensity; label: string; hint: string }[] = [
   { value: "full", label: "Full", hint: "Leaves, fireflies, mascot cards." },
   { value: "calm", label: "Calm", hint: "Mascot cards, no particles." },
   { value: "off", label: "Off", hint: "Just quiet toasts." },
 ];
+const VALUES = OPTIONS.map((o) => o.value);
 
 /** Per-device celebration intensity (stored in this browser). */
 export function CelebrationControl() {
@@ -29,7 +31,9 @@ export function CelebrationControl() {
             type="button"
             role="radio"
             aria-checked={value === o.value}
+            tabIndex={current.value === o.value ? 0 : -1}
             onClick={() => setValue(o.value)}
+            onKeyDown={(e) => radioKeyNav(e, VALUES, current.value, setValue)}
             className={`min-h-10 rounded-full px-4 font-medium transition-colors ${
               value === o.value ? "bg-card text-ink shadow-soft" : "text-muted hover:text-ink"
             }`}

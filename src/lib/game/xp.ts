@@ -18,6 +18,7 @@ export const XP = {
 /** Anti-grind caps: XP from these actions counts at most N per week. */
 const WEEKLY_CAP = { resume: 3, analysis: 5 } as const;
 
+/** One breakdown row. `count` is 0 for rows that aren't a tally of actions (e.g. kept XP). */
 export type XpSource = { key: string; label: string; count: number; xp: number };
 
 export function computeXp(snapshot: UserSnapshot, timeZone: string): { xp: number; breakdown: XpSource[] } {

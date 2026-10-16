@@ -41,7 +41,7 @@ export type FieldErrors = Partial<Record<FieldName, string>>;
 
 /** useActionState-compatible result for the full create/edit forms. */
 export type ApplicationFormState =
-  | { ok: true; id: string; message?: string }
+  | { ok: true; id: string; message?: string; /** After a create: the user's submitted-application count. */ submitted?: number }
   | { ok: false; error?: string; fieldErrors?: FieldErrors }
   | undefined;
 

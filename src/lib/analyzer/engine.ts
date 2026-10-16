@@ -44,7 +44,8 @@ export function normalizeText(input: string): string {
     .replace(/[‐-―−﹘﹣－]/g, "-")
     .replace(/[  -   　\t\f\v]/g, " ")
     .replace(/\r\n?/g, "\n")
-    .replace(/([A-Za-z]{2,})-[ ]*\n[ ]*([a-z]{2,})/g, "$1$2")
+    // Lookarounds (not captures) keep this linear on long hyphen-free letter runs.
+    .replace(/(?<=[A-Za-z]{2})-[ ]*\n[ ]*(?=[a-z]{2})/g, "")
     .replace(/ & /g, " and ");
 }
 
@@ -236,19 +237,22 @@ const NEGATION_TRIGGERS: string[][] = [
   ["no", "knowledge"],
   ["no", "exposure"],
   ["not", "proficient"],
-  ["lack", "of"],
-  ["lacking"],
 ];
 const CONTRAST = new Set(["but", "however", "although", "though", "yet", "while", "whereas"]);
+/** A trigger only counts when it's about the writer: at the start of a line or after one of these. */
+const SELF = new Set(["i", "have", "had", "has", "but", "still", "currently", "yet"]);
+/** Words that start a new clause, so a trigger before them doesn't reach the concept after. */
+const CLAUSE_BREAK = new Set(["by", "using", "via", "through", "deploying", "implementing", "building", "and", "to", "for"]);
 
 function isNegated(toks: Token[], start: number): boolean {
   const lo = Math.max(0, start - 7);
   for (let i = lo; i < start; i++) {
+    if (i > 0 && !SELF.has(toks[i - 1].norm)) continue;
     for (const trig of NEGATION_TRIGGERS) {
       if (i + trig.length > start) continue;
       if (!trig.every((w, k) => toks[i + k]?.norm === w)) continue;
       const between = toks.slice(i + trig.length, start);
-      if (between.some((t) => CONTRAST.has(t.norm))) continue;
+      if (between.some((t) => CONTRAST.has(t.norm) || CLAUSE_BREAK.has(t.norm))) continue;
       return true;
     }
   }
@@ -359,7 +363,7 @@ function sortByWeight<T extends { weight: number; term: string }>(items: T[]): T
   return items.sort((a, b) => b.weight - a.weight || a.term.localeCompare(b.term));
 }
 
-function commonSuggestions(flagged: FlaggedTerm[], words: number): string[] {
+function commonSuggestions(flagged: FlaggedTerm[], words: number, fromPdf = false): string[] {
   const out: string[] = [];
   if (flagged.length) {
     out.push(
@@ -368,7 +372,9 @@ function commonSuggestions(flagged: FlaggedTerm[], words: number): string[] {
   }
   if (words < 150) {
     out.push(
-      `Only ${words} words of resume text were analyzed. If that seems low, the PDF may not have extracted cleanly. Check "What Rue read" below or paste the text.`,
+      fromPdf
+        ? `Only ${words} words of resume text were analyzed. If that seems low, the PDF may not have extracted cleanly. Check "What Rue read" below or paste the text.`
+        : `Your resume text is short (${words} words). Paste the full resume for a fairer match.`,
     );
   }
   return out;
@@ -390,7 +396,7 @@ function bonusFrom(hits: Map<string, Hit>, exclude: Set<string>): BonusTerm[] {
 
 // ── Preset mode: category coverage ───────────────────────────────────────────
 
-function analyzePreset(resumeText: string, presetKey: string, extraTerms: string[] | undefined, title?: string): AnalysisResult {
+function analyzePreset(resumeText: string, presetKey: string, extraTerms: string[] | undefined, title?: string, fromPdf = false): AnalysisResult {
   const preset = getPreset(presetKey);
   if (!preset) throw new Error(`Unknown preset: ${presetKey}`);
   const index = globalIndex();
@@ -462,7 +468,7 @@ function analyzePreset(resumeText: string, presetKey: string, extraTerms: string
     const ideas = missing.filter((m) => m.category === c.id).map((m) => m.term);
     if (ideas.length) suggestions.push(`${c.label}: if it's true, mention ${listTerms(ideas)}. ${c.tip}`);
   }
-  suggestions.push(...commonSuggestions(flagged, resume.words));
+  suggestions.push(...commonSuggestions(flagged, resume.words, fromPdf));
   if (score >= 85) suggestions.unshift("Strong coverage. Next, make sure each keyword sits next to proof: a project, a number or a result.");
 
   return {
@@ -630,7 +636,13 @@ export function extractTerms(jobDescription: string): { terms: ExtractedTerm[]; 
   return { terms: [...byId.values()], alternatives, scan: jd };
 }
 
-function analyzeJobDescription(resumeText: string, jobDescription: string, extraTerms: string[] | undefined, title?: string): AnalysisResult {
+function analyzeJobDescription(
+  resumeText: string,
+  jobDescription: string,
+  extraTerms: string[] | undefined,
+  title?: string,
+  fromPdf = false,
+): AnalysisResult {
   const index = globalIndex();
   const { terms, alternatives: altTerms, scan: jd } = extractTerms(jobDescription);
   const resume = scan(resumeText, index, true);
@@ -744,7 +756,7 @@ function analyzeJobDescription(resumeText: string, jobDescription: string, extra
     const ideas = missing.filter((m) => m.category === c.id && m.requirement !== "required").map((m) => m.term);
     if (ideas.length) suggestions.push(`${c.label}: ${listTerms(ideas)} ${ideas.length === 1 ? "appears" : "appear"} in the posting but not your resume. ${missing.find((m) => m.term === ideas[0])?.tip ?? c.tip}`);
   }
-  suggestions.push(...commonSuggestions(flagged, resume.words));
+  suggestions.push(...commonSuggestions(flagged, resume.words, fromPdf));
   if (limited) suggestions.unshift("There isn't enough recognized detail for a useful percentage. Use the found and missing lists as a checklist instead.");
   else if (score >= 85) suggestions.unshift("This resume already speaks the posting's language. Next, check that each match sits next to proof.");
 
@@ -783,8 +795,8 @@ export function guessTitle(jobDescription: string): string {
 // ── Public entry point ───────────────────────────────────────────────────────
 
 export function analyze(input: AnalyzeInput): AnalysisResult {
-  if (input.mode === "preset") return analyzePreset(input.resumeText, input.presetKey, input.extraTerms, input.title);
-  return analyzeJobDescription(input.resumeText, input.jobDescription, input.extraTerms, input.title);
+  if (input.mode === "preset") return analyzePreset(input.resumeText, input.presetKey, input.extraTerms, input.title, input.fromPdf);
+  return analyzeJobDescription(input.resumeText, input.jobDescription, input.extraTerms, input.title, input.fromPdf);
 }
 
 /** The canonical concept term for an id, if known (used to label stored history). */

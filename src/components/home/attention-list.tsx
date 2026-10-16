@@ -9,7 +9,7 @@ import type { AttentionItem, AttentionKind } from "./context";
 const KIND: Record<AttentionKind, { label: string; icon: AppIconName; chip: string }> = {
   interview: { label: "Interview", icon: "sparkle", chip: "bg-sun-soft text-ink ring-sun/50" },
   followup: { label: "Follow-up", icon: "bell", chip: "bg-sky-soft text-ink ring-sky/50" },
-  deadline: { label: "Deadline", icon: "calendar", chip: "bg-coral-soft text-coral ring-coral/30" },
+  deadline: { label: "Deadline", icon: "calendar", chip: "bg-coral-soft text-coral-ink ring-coral/30" },
   assessment: { label: "Assessment", icon: "file", chip: "bg-sky-soft text-ink ring-sky/50" },
   ghost: { label: "Quiet 30+ days", icon: "pin", chip: "bg-paper-2 text-muted ring-line-strong" },
 };

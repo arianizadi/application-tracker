@@ -8,7 +8,7 @@ import { PipelineCard } from "@/components/stats/pipeline";
 import { ResponseTimeChart } from "@/components/stats/response-time";
 import { StatTile, type TileDelta } from "@/components/stats/stat-tile";
 import { WeeklyChart } from "@/components/stats/weekly-chart";
-import { MATURE_DAYS, MIN_SAMPLE, type Rate, type RateDelta, type Stats } from "@/lib/stats/compute";
+import { MATURE_DAYS, MIN_SAMPLE, isTooEarly, type Rate, type RateDelta, type Stats } from "@/lib/stats/compute";
 import { days, pct, plural, pts, signed } from "@/lib/stats/format";
 import { getInsights, headline } from "@/lib/stats/insights";
 
@@ -37,7 +37,15 @@ function rateDelta(d: RateDelta | null, trend: (number | null)[]): TileDelta | n
 }
 
 function rateValue(rate: Rate): string {
-  return rate.den === 0 ? "—" : pct(rate.value);
+  return isTooEarly(rate) ? "—" : pct(rate.value);
+}
+
+/** "5 of 8 old enough to judge · 2 too new", or a "too early" line when every counted app is a hit. */
+function rateDetail(rate: Rate, hits: string, empty: string): string {
+  if (rate.den === 0) return empty;
+  if (isTooEarly(rate)) return `${rate.num} ${hits} so far · check back in a week`;
+  const excluded = rate.excluded ?? 0;
+  return `${rate.num} of ${rate.den} old enough to judge${excluded ? ` · ${excluded} too new` : ""}`;
 }
 
 export function StatsDashboard({ stats, track, preview = false }: { stats: Stats; track: string; preview?: boolean }) {
@@ -78,7 +86,7 @@ export function StatsDashboard({ stats, track, preview = false }: { stats: Stats
           trend={stats.trends.reply}
           trendLabel="Reply rate over the last 12 weeks"
           delta={rateDelta(compare.reply, stats.trends.reply)}
-          detail={rates.reply.den ? `${rates.reply.num} of ${rates.reply.den} heard back, rejections included` : "Replies show up once apps age a bit"}
+          detail={rateDetail(rates.reply, "heard back", "Replies show up once apps age a bit")}
         />
         <StatTile
           index={2}
@@ -88,13 +96,13 @@ export function StatsDashboard({ stats, track, preview = false }: { stats: Stats
           trend={stats.trends.interview}
           trendLabel="Interview rate over the last 12 weeks"
           delta={rateDelta(compare.interview, stats.trends.interview)}
-          detail={rates.interview.den ? `${rates.interview.num} of ${rates.interview.den} reached a real human` : "Your first interview will show here"}
+          detail={rateDetail(rates.interview, "reached a real human", "Your first interview will show here")}
         />
         <StatTile
           index={3}
           label="Typical reply time"
-          value={stats.responseTime.median === null ? "—" : String(Math.round(stats.responseTime.median))}
-          unit={stats.responseTime.median === null ? undefined : Math.round(stats.responseTime.median) === 1 ? "day" : "days"}
+          value={stats.responseTime.median === null ? "—" : stats.responseTime.median < 1 ? "<1" : String(Math.round(stats.responseTime.median))}
+          unit={stats.responseTime.median === null ? undefined : stats.responseTime.median < 1 || Math.round(stats.responseTime.median) === 1 ? "day" : "days"}
           early={stats.responseTime.lowSample}
           delta={medianDelta}
           detail={`Median of ${plural(stats.responseTime.n, "reply", "replies")}${stats.responseTime.pending ? ` · ${stats.responseTime.pending} still waiting` : ""}`}
@@ -103,10 +111,10 @@ export function StatsDashboard({ stats, track, preview = false }: { stats: Stats
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-3xl border border-line bg-paper-2/50 px-5 py-4 text-sm sm:grid-cols-4">
         {[
-          { k: "Positive next steps", v: rateValue(rates.positive), s: `${rates.positive.num} OAs, interviews or offers` },
+          { k: "Positive next steps", v: rateValue(rates.positive), s: `${rates.positive.num} OAs, interviews or offers${isTooEarly(rates.positive) && rates.positive.den ? " so far" : ""}` },
           { k: "OA → interview", v: rateValue(rates.oaToInterview), s: rates.oaToInterview.den ? `${rates.oaToInterview.num} of ${rates.oaToInterview.den} assessments` : "No OAs yet" },
           { k: "Offers", v: String(totals.offers), s: rates.interviewToOffer.den ? `${rates.interviewToOffer.num} of ${rates.interviewToOffer.den} interviews` : "All time" },
-          { k: "Ghosted", v: rateValue(rates.ghost), s: rates.ghost.den ? `${rates.ghost.num} of ${rates.ghost.den}, their loss` : "Nobody yet" },
+          { k: "Ghosted", v: rateValue(rates.ghost), s: !rates.ghost.den ? "Nobody yet" : isTooEarly(rates.ghost) ? `${rates.ghost.num} so far, their loss` : `${rates.ghost.num} of ${rates.ghost.den}, their loss` },
         ].map((f) => (
           <div key={f.k} className="min-w-0">
             <dt className="text-xs text-muted">{f.k}</dt>
@@ -118,12 +126,12 @@ export function StatsDashboard({ stats, track, preview = false }: { stats: Stats
 
       {!preview ? <InsightsSection insights={insights} headline={headline(stats)} /> : null}
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-5 lg:items-start">
         <WeeklyChart weekly={stats.weekly} className="lg:col-span-3" />
         <PipelineCard pipeline={stats.pipeline} wishlist={totals.wishlist} className="lg:col-span-2" />
       </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
         <FunnelChart stages={stats.funnel} rangeLabel={stats.rangeLabel} />
         <ResponseTimeChart responseTime={stats.responseTime} />
       </div>
@@ -171,10 +179,10 @@ export function StatsDashboard({ stats, track, preview = false }: { stats: Stats
               </svg>
             </summary>
             <dl className="grid gap-x-6 gap-y-3 pb-5 pt-1 text-ink-soft sm:grid-cols-2">
-              <div><dt className="font-medium text-ink">Sent</dt><dd>Anything with an applied date or that ever moved past the wishlist. The range filters by the date you applied.</dd></div>
+              <div><dt className="font-medium text-ink">Sent</dt><dd>Anything with an applied date or that ever moved past the wishlist, unless it&apos;s back on the wishlist now. The range filters by the date you applied.</dd></div>
               <div><dt className="font-medium text-ink">Reply</dt><dd>An OA, interview, offer or rejection. Rejections count: a no is still a reply. Ghosting doesn&apos;t.</dd></div>
               <div><dt className="font-medium text-ink">Interview &amp; offer rates</dt><dd>Applications that ever reached that stage, from your status history. A rejection after an interview still counts as an interview.</dd></div>
-              <div><dt className="font-medium text-ink">Fair denominators</dt><dd>Applications under {MATURE_DAYS} days old only count toward a rate once they hit the milestone, so brand-new apps never drag your numbers down.</dd></div>
+              <div><dt className="font-medium text-ink">Fair denominators</dt><dd>Applications under {MATURE_DAYS} days old only count toward a rate once they hit the milestone, so brand-new apps never drag your numbers down. The funnel uses every app sent, so its shares can differ from the rate tiles until your apps age.</dd></div>
               <div><dt className="font-medium text-ink">Early data</dt><dd>Rates with fewer than {MIN_SAMPLE} counted applications are marked early. Small numbers swing a lot.</dd></div>
               <div><dt className="font-medium text-ink">Reply time</dt><dd>Median days from applying to the first reply, using the dates status changes were logged ({days(stats.responseTime.median)} for this range).</dd></div>
             </dl>

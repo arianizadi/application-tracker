@@ -49,7 +49,7 @@ type Spawner = (layer: HTMLElement) => Animation[];
  * Run one or more spawners in a fresh layer. Returns a cancel function (idempotent).
  * No-op (returns a noop) during SSR or where WAAPI is unavailable.
  */
-export function runFx(spawn: Spawner | Spawner[], { z = 80, maxMs = 7000 }: { z?: number; maxMs?: number } = {}): () => void {
+export function runFx(spawn: Spawner | Spawner[], { z = 30, maxMs = 7000 }: { z?: number; maxMs?: number } = {}): () => void {
   if (!canAnimate()) return () => {};
   const layer = createLayer(z);
   let anims: Animation[] = [];

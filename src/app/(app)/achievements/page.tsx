@@ -22,6 +22,7 @@ import {
   type AchievementDef,
   type AchievementProgress,
 } from "@/lib/game";
+import { getGameMemory } from "@/lib/game/memory";
 import { getEarnedAchievements } from "@/lib/game/queries";
 
 export const metadata: Metadata = {
@@ -51,9 +52,14 @@ function dateFormatter(timeZone: string): Intl.DateTimeFormat {
 
 export default async function AchievementsPage({ searchParams }: PageProps<"/achievements">) {
   const user = await requireUser();
-  const [snapshot, earned, params] = await Promise.all([getSnapshot(user.id), getEarnedAchievements(user.id), searchParams]);
+  const [snapshot, earned, memory, params] = await Promise.all([
+    getSnapshot(user.id),
+    getEarnedAchievements(user.id),
+    getGameMemory(user.id),
+    searchParams,
+  ]);
   const now = new Date();
-  const game = computeGame(snapshot, user, now);
+  const game = computeGame(snapshot, user, now, memory);
   const filter = parseFilter(params.show);
   const fmt = dateFormatter(user.timeZone);
 
@@ -100,7 +106,7 @@ export default async function AchievementsPage({ searchParams }: PageProps<"/ach
                 </span>
                 <p className="min-w-0 text-sm text-ink-soft">
                   <span className="font-semibold text-ink">Next up: {game.nextLevel.name}</span> at{" "}
-                  <span className="tabular">{game.nextLevel.minXp.toLocaleString("en-US")}</span> XP. Adds {game.nextLevel.accent} to your forest.
+                  <span className="tabular">{game.nextLevel.minXp.toLocaleString("en-US")}</span> XP. A new title for your badge.
                 </p>
               </div>
             ) : (
@@ -151,7 +157,7 @@ export default async function AchievementsPage({ searchParams }: PageProps<"/ach
                 {game.xpBreakdown.slice(0, 7).map((row) => (
                   <li key={row.key} className="flex items-center gap-3 text-sm">
                     <span className="min-w-0 flex-1 truncate text-ink-soft">
-                      {row.label} <span className="text-muted tabular">×{row.count}</span>
+                      {row.label} {row.count > 0 ? <span className="text-muted tabular">×{row.count}</span> : null}
                     </span>
                     <span className="font-semibold tabular">+{row.xp.toLocaleString("en-US")}</span>
                   </li>

@@ -141,6 +141,19 @@ export const createApplicationSchema = z.object({
 
 export const updateApplicationSchema = z.object(applicationFields);
 
+/**
+ * Hidden form field listing the fields the user actually changed (comma-separated).
+ * The edit form sends it so a save never overwrites values set elsewhere
+ * (follow-up panel, another tab) with the stale copy the form was holding.
+ */
+export const DIRTY_FIELDS = "__dirty";
+
+export type EditableField = keyof typeof applicationFields;
+
+export function isEditableField(key: string): key is EditableField {
+  return Object.hasOwn(applicationFields, key);
+}
+
 export const quickAddSchema = z.object({
   company: applicationFields.company,
   role: applicationFields.role,

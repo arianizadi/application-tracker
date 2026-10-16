@@ -43,7 +43,13 @@ export function FunnelChart({ stages, rangeLabel, className = "" }: { stages: Fu
                       {i > 0 ? <span className="ml-1.5 text-xs text-muted">{pct(s.ofSubmitted)}</span> : null}
                     </span>
                   </div>
-                  <div tabIndex={0} data-tip={tip} aria-label={tip.replace("\n", ". ")} className="h-6 rounded-md bg-paper-2/70 outline-none">
+                  <div
+                    role="img"
+                    tabIndex={0}
+                    data-tip={tip}
+                    aria-label={tip.replace("\n", ". ")}
+                    className="h-6 rounded-md bg-paper-2/70 outline-none focus-visible:ring-2 focus-visible:ring-moss"
+                  >
                     {s.count > 0 ? (
                       <div
                         className={`stats-grow-x h-full rounded-r-[4px] rounded-l-[2px] ${s.optional ? "bg-moss/45" : "bg-moss"}`}

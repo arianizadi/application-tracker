@@ -260,6 +260,16 @@ test("expected keywords are credited", () => {
   }
 });
 
+test("common lab and networking phrasings are credited", () => {
+  const resume = "Home SOC Lab: Splunk SIEM fed by Sysmon.\nPacket analysis with Wireshark across TCP/IP, DNS and HTTP captures.";
+  const general = foundTerms(resume, "cyber-general");
+  assert.ok(general.has("Home lab"), `"Home SOC Lab" should credit Home lab (found ${[...general].join(", ")})`);
+  assert.ok(general.has("Networking"), `"Packet analysis" should credit Networking (found ${[...general].join(", ")})`);
+  for (const phrase of ["Ran a social network analysis for a sociology class.", "Website traffic analysis for a marketing class."]) {
+    assert.ok(!foundTerms(phrase, "cyber-general").has("Networking"), `false positive: Networking from "${phrase}"`);
+  }
+});
+
 // ── False positives ──────────────────────────────────────────────────────────
 
 test("no obviously false matches from everyday words", () => {

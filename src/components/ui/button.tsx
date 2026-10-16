@@ -11,7 +11,7 @@ const variants: Record<Variant, string> = {
   primary: "bg-moss text-paper shadow-soft hover:bg-moss-strong",
   secondary: "border border-line-strong bg-card text-ink hover:bg-paper-2",
   ghost: "text-ink-soft hover:bg-paper-2 hover:text-ink",
-  danger: "bg-coral text-white hover:brightness-95",
+  danger: "bg-coral-strong text-on-coral hover:brightness-95",
   sun: "bg-sun text-night shadow-soft hover:brightness-105",
 };
 

@@ -28,6 +28,9 @@ const SEARCH_INDEX = new Map(
   RESOURCES.map((r) => [r.id, [r.title, plainText(r.why), r.category, r.type, RESOURCE_TYPE_LABELS[r.type], ...r.tags, ...r.tracks.map((t) => TRACK_LABELS[t])].join(" \u0000 ").toLowerCase()]),
 );
 
+/** Cards shown per category before "Show all" in the browse view (keeps phones from scrolling 40+ screens). */
+const GROUP_PREVIEW = 3;
+
 const TYPES = [...new Set(RESOURCES.map((r) => r.type))].sort((a, b) => RESOURCE_TYPE_LABELS[a].localeCompare(RESOURCE_TYPE_LABELS[b]));
 
 export function ResourceLibrary({ initial, recommendedIds, isSecurityTrack }: { initial: ProgressMap; recommendedIds: string[]; isSecurityTrack: boolean }) {
@@ -36,6 +39,7 @@ export function ResourceLibrary({ initial, recommendedIds, isSecurityTrack }: { 
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [showFilters, setShowFilters] = useState(false);
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(() => new Set());
   const q = useDeferredValue(query.trim().toLowerCase());
   const filterPanel = useId();
 
@@ -234,15 +238,39 @@ export function ResourceLibrary({ initial, recommendedIds, isSecurityTrack }: { 
         />
       ) : groups ? (
         <div className="flex flex-col gap-10">
-          {groups.map((g) => (
-            <section key={g.title} aria-label={g.title}>
-              <h2 className={`mb-4 text-xl font-semibold leading-snug sm:text-2xl ${g.title.startsWith("Recommended") ? "text-coral" : ""}`}>{g.title}</h2>
-              <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{g.items.map(renderCard)}</ul>
-            </section>
-          ))}
+          {groups.map((g) => {
+            const isRec = g.title.startsWith("Recommended");
+            const collapsible = !isRec && g.items.length > GROUP_PREVIEW;
+            const open = !collapsible || openGroups.has(g.title);
+            return (
+              <section key={g.title} aria-label={g.title}>
+                <h2 className={`mb-4 text-xl font-semibold leading-snug sm:text-2xl ${isRec ? "text-coral" : ""}`}>{g.title}</h2>
+                <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{(open ? g.items : g.items.slice(0, GROUP_PREVIEW)).map(renderCard)}</ul>
+                {collapsible ? (
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() =>
+                      setOpenGroups((prev) => {
+                        const next = new Set(prev);
+                        if (open) next.delete(g.title);
+                        else next.add(g.title);
+                        return next;
+                      })
+                    }
+                    className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line-strong bg-card px-4 text-sm font-medium text-ink-soft hover:text-ink"
+                  >
+                    {open ? "Show fewer" : `Show all ${g.items.length}`}
+                    <span className="sr-only"> in {g.title}</span>
+                    <PrepIcon name="chevron-down" className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                  </button>
+                ) : null}
+              </section>
+            );
+          })}
         </div>
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{results.map(renderCard)}</ul>
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">{results.map(renderCard)}</ul>
       )}
     </div>
   );

@@ -166,7 +166,10 @@ export function ModuleProgressMeter({ questionIds, compact = false }: { question
         aria-valuemax={total}
         aria-valuenow={practiced}
       >
-        <div className="h-full rounded-full bg-gradient-to-r from-leaf to-moss transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <div
+          className="h-full w-full rounded-full bg-gradient-to-r from-leaf to-moss transition-transform duration-500 motion-reduce:transition-none"
+          style={{ transform: `translateX(${pct - 100}%)` }}
+        />
       </div>
     </div>
   );
@@ -393,7 +396,7 @@ export function TermsGlossary({ terms }: { terms: readonly { term: string; defin
           Quiz me
         </button>
       </div>
-      <dl className="grid gap-3 sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {terms.map((t, i) => {
           const hidden = quiz && !shown.has(i);
           return (

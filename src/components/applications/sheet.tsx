@@ -80,6 +80,7 @@ export function StatusSheet({
   current,
   exclude = [],
   onPick,
+  children,
 }: {
   open: boolean;
   onClose: () => void;
@@ -88,6 +89,8 @@ export function StatusSheet({
   current?: ApplicationStatus;
   exclude?: ApplicationStatus[];
   onPick: (status: ApplicationStatus) => void;
+  /** Extra controls above the choices (e.g. "When did this happen?"). */
+  children?: ReactNode;
 }) {
   const groups: { label: string; statuses: ApplicationStatus[] }[] = [
     { label: "In progress", statuses: ACTIVE_STATUSES.filter((s) => !exclude.includes(s)) },
@@ -97,6 +100,7 @@ export function StatusSheet({
   return (
     <Sheet open={open} onClose={onClose} title={title} description={description}>
       <div className="flex flex-col gap-4 pb-4">
+        {children}
         {groups.map((group) => (
           <div key={group.label}>
             <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted">{group.label}</p>
@@ -167,7 +171,7 @@ export function ConfirmSheet({
           type="button"
           disabled={pending}
           onClick={onConfirm}
-          className="h-11 rounded-full bg-coral px-5 text-sm font-medium text-white hover:brightness-95 disabled:opacity-60"
+          className="h-11 rounded-full bg-coral-strong px-5 text-sm font-medium text-on-coral hover:brightness-95 disabled:opacity-60"
         >
           {pending ? "Deleting…" : confirmLabel}
         </button>

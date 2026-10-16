@@ -102,7 +102,7 @@ export function WeeklyChart({ weekly, className = "" }: { weekly: Stats["weekly"
               {weeks.map((w, i) => (
                 <span
                   key={w.start}
-                  className={`flex-1 whitespace-nowrap text-center ${w.current ? "font-semibold text-ink-soft" : ""} ${i % 2 === (weeks.length - 1) % 2 ? "" : "invisible sm:visible"}`}
+                  className={`flex min-w-0 flex-1 justify-center whitespace-nowrap ${w.current ? "font-semibold text-ink-soft" : ""} ${i % 2 === (weeks.length - 1) % 2 ? "" : "invisible sm:visible"}`}
                 >
                   {w.current ? "Now" : w.label}
                 </span>

@@ -2,7 +2,7 @@ import type { ApplicationStatus } from "@prisma/client";
 
 import type { SnapshotApplication, UserSnapshot } from "@/lib/data/snapshot";
 
-import { DAY_MS, localParts, weekOf } from "./time";
+import { DAY_MS, localParts, partsOfDateOnly, weekOf } from "./time";
 
 /** Maximum freeze tokens held at once. */
 export const MAX_FREEZES = 2;
@@ -68,9 +68,23 @@ export type Rhythm = {
   currentWeek: number;
 };
 
-/** Submitted means it left the wishlist (or has an appliedAt). */
+/**
+ * Submitted means it has an appliedAt, or (legacy rows without one) left the
+ * wishlist for a real stage. Withdrawing a wishlist item isn't applying.
+ */
 export function isSubmitted(app: SnapshotApplication): boolean {
-  return app.appliedAt !== null || app.status !== "WISHLIST";
+  return app.appliedAt !== null || (app.status !== "WISHLIST" && app.status !== "WITHDRAWN");
+}
+
+/**
+ * The real instant the user logged the submission. appliedAt is only a
+ * calendar day, so use the first post-wishlist status change instead (skipping
+ * one stamped exactly at appliedAt, which is a backfilled day, not a time).
+ */
+function loggedAt(app: SnapshotApplication): Date {
+  const applied = app.appliedAt ? new Date(app.appliedAt).getTime() : null;
+  const event = app.history.find((h) => h.status !== "WISHLIST" && new Date(h.at).getTime() !== applied);
+  return new Date(event?.at ?? app.createdAt);
 }
 
 /** Best guess at when an application was submitted. */
@@ -102,7 +116,7 @@ export function computeRhythm(
   const perWeek = new Map<number, number>();
   for (const app of snapshot.applications) {
     if (!app.appliedAt) continue;
-    const w = weekOf(new Date(app.appliedAt), tz);
+    const w = partsOfDateOnly(app.appliedAt).week;
     perWeek.set(w, (perWeek.get(w) ?? 0) + 1);
   }
 
@@ -156,7 +170,10 @@ export function computeStats(snapshot: UserSnapshot, timeZone: string, rhythm: R
   const perDay = new Map<number, number>();
   const companies = new Map<string, number>();
   const submitTimes: number[] = [];
-  const rejectionTimes: number[] = [];
+  /** Local day → latest instant a submission for that day was logged. */
+  const submitDays = new Map<number, number>();
+  const rejectionDays: { day: number; at: number }[] = [];
+  const addRejection = (at: Date) => rejectionDays.push({ day: localParts(at, tz).dayNum, at: at.getTime() });
 
   for (const app of apps) {
     const reached = reachedStatuses(app);
@@ -172,9 +189,9 @@ export function computeStats(snapshot: UserSnapshot, timeZone: string, rhythm: R
     if (reached.has("WITHDRAWN")) withdrawn++;
     if (app.followUpAt) followUps++;
     if (app.excitement >= 5) dreamRoles++;
-    for (const h of app.history) if (h.status === "REJECTED") rejectionTimes.push(new Date(h.at).getTime());
+    for (const h of app.history) if (h.status === "REJECTED") addRejection(new Date(h.at));
     if (app.status === "REJECTED" && !app.history.some((h) => h.status === "REJECTED")) {
-      rejectionTimes.push(new Date(app.updatedAt).getTime());
+      addRejection(new Date(app.updatedAt));
     }
 
     if (!isSubmitted(app)) continue;
@@ -187,10 +204,18 @@ export function computeStats(snapshot: UserSnapshot, timeZone: string, rhythm: R
     const at = submittedAt(app);
     const t = at.getTime();
     submitTimes.push(t);
-    const local = localParts(at, tz);
+    // appliedAt is a calendar day; only history/createdAt are real instants.
+    const local = app.appliedAt ? partsOfDateOnly(app.appliedAt) : localParts(at, tz);
+    const logged = app.appliedAt ? loggedAt(app) : at;
     weeks.add(local.week);
     perDay.set(local.dayNum, (perDay.get(local.dayNum) ?? 0) + 1);
-    if (app.appliedAt && local.hour < 4) nightOwl = true;
+    submitDays.set(local.dayNum, Math.max(submitDays.get(local.dayNum) ?? -Infinity, logged.getTime()));
+    if (app.appliedAt) {
+      // Logged in the small hours, for that day or the one before (not a backdated entry).
+      const loggedLocal = localParts(logged, tz);
+      const lag = loggedLocal.dayNum - local.dayNum;
+      if (loggedLocal.hour < 4 && lag >= 0 && lag <= 1) nightOwl = true;
+    }
     if (local.weekday >= 5) weekendApp = true;
     if (app.deadline) {
       const d = new Date(app.deadline).getTime();
@@ -211,20 +236,11 @@ export function computeStats(snapshot: UserSnapshot, timeZone: string, rhythm: R
     }
   }
 
-  let bounceBack = false;
-  for (const r of rejectionTimes) {
-    // First submission strictly after the rejection.
-    let lo = 0, hi = submitTimes.length;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (submitTimes[mid] <= r) lo = mid + 1;
-      else hi = mid;
-    }
-    if (lo < submitTimes.length && submitTimes[lo] - r <= 2 * DAY_MS) {
-      bounceBack = true;
-      break;
-    }
-  }
+  // A submission within two calendar days of a rejection. Submission days are
+  // dates, not times, so a same-day one only counts if it was logged afterwards.
+  const bounceBack = rejectionDays.some(
+    (r) => submitDays.has(r.day + 1) || submitDays.has(r.day + 2) || (submitDays.get(r.day) ?? -Infinity) > r.at,
+  );
 
   let bestScore = 0;
   const byTarget = new Map<string, { at: number; score: number }[]>();

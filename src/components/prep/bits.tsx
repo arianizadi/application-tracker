@@ -33,6 +33,7 @@ export function ProgressRing({
   label,
   children,
   tone = "moss",
+  className = "",
 }: {
   value: number;
   max: number;
@@ -41,13 +42,15 @@ export function ProgressRing({
   label: string;
   children?: ReactNode;
   tone?: "moss" | "sun" | "berry" | "sky";
+  /** Extra wrapper classes; use `!` sizes to override `size` at a breakpoint. */
+  className?: string;
 }) {
   const r = (100 - stroke) / 2;
   const c = 2 * Math.PI * r;
   const frac = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
   const color = { moss: "var(--moss)", sun: "var(--sun)", berry: "var(--berry)", sky: "var(--sky)" }[tone];
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    <div className={`relative shrink-0 ${className}`} style={{ width: size, height: size }}>
       <svg viewBox="0 0 100 100" className="size-full -rotate-90" role="img" aria-label={label}>
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--paper-2)" strokeWidth={stroke} />
         <circle cx="50" cy="50" r={r} fill="none" stroke="var(--line)" strokeWidth="1" strokeDasharray="1.5 4" />

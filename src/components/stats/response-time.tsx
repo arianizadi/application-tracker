@@ -24,7 +24,7 @@ export function ResponseTimeChart({ responseTime, className = "" }: { responseTi
       <div className="mb-5 flex flex-wrap items-end gap-x-6 gap-y-2">
         <div>
           <p className="text-xs text-muted">Typical wait (median)</p>
-          <p className="text-2xl font-semibold leading-tight">{median === null ? "—" : days(median)}</p>
+          <p className="text-2xl font-semibold leading-tight">{median === null ? "—" : median < 1 ? "Under a day" : days(median)}</p>
         </div>
         <p className="text-sm text-ink-soft">
           From {plural(n, "reply", "replies")}
@@ -39,7 +39,7 @@ export function ResponseTimeChart({ responseTime, className = "" }: { responseTi
         <TipLayer>
           <ul className="grid grid-cols-5 gap-2" aria-label="Replies by wait time">
             {buckets.map((b, i) => (
-              <li key={b.label} tabIndex={0} data-tip={`${b.label}: ${plural(b.count, "reply", "replies")}`} className="flex flex-col items-center gap-1.5 rounded-lg outline-none">
+              <li key={b.label} data-tip={`${b.label}: ${plural(b.count, "reply", "replies")}`} className="flex flex-col items-center gap-1.5 rounded-lg">
                 <span className="relative flex h-32 w-full items-end justify-center">
                   {b.count > 0 ? (
                     <>

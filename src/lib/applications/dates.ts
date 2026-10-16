@@ -30,6 +30,29 @@ export function dateKeyInZone(date: Date, timeZone: string): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
+/** Milliseconds the zone is ahead of UTC at `date`. */
+function zoneOffsetMs(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: safeZone(timeZone),
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return asUtc - Math.floor(date.getTime() / 1000) * 1000;
+}
+
+/** The instant of 12:00 local time on `key` in `timeZone` (a stable "that day" for backdated events). */
+export function noonInZone(key: string, timeZone: string): Date {
+  const guess = dateKeyToDate(key);
+  return new Date(guess.getTime() - zoneOffsetMs(guess, timeZone));
+}
+
 export function isDateKey(value: string): boolean {
   const m = KEY_RE.exec(value);
   if (!m) return false;

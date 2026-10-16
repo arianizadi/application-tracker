@@ -199,13 +199,17 @@ export const CONCEPTS: Record<string, ConceptDef> = {
   Networking: {
     aliases: [
       "computer networking", "computer networks", "network fundamentals", "routing and switching", "network protocols", "routing", "switching", "subnetting",
+      "packet analysis", "network traffic analysis", "network analysis", "traffic analysis", "network troubleshooting", "osi model", "tcp/ip networking",
     ],
-    // Not the career-fair kind.
     guards: {
+      // Not the career-fair kind.
       networking: {
         notAfter: ["professional", "social", "career", "industry", "alumni"],
         notBefore: ["event", "events", "night", "nights", "reception", "receptions", "opportunities", "opportunity", "mixer", "mixers", "luncheon", "dinner"],
       },
+      // Not social-network or website-traffic analysis.
+      "network analysis": { notAfter: ["social"] },
+      "traffic analysis": { notAfter: ["web", "website", "site", "marketing", "seo"] },
     },
   },
   "TCP/IP": { aliases: ["tcp", "udp", "ip networking", "osi model", "osi", "tcp/udp", "ipv4", "ipv6"], guards: { osi: { cased: ["OSI"] } } },
@@ -453,7 +457,12 @@ export const CONCEPTS: Record<string, ConceptDef> = {
     ],
     guards: { htb: { cased: ["HTB"] } },
   },
-  "Home lab": { aliases: ["homelab", "home-lab", "home labs", "personal lab", "lab environment", "virtual lab", "home network lab"] },
+  "Home lab": {
+    aliases: [
+      "homelab", "home-lab", "home labs", "personal lab", "lab environment", "virtual lab", "home network lab",
+      "home soc lab", "home security lab", "home cyber lab", "home cybersecurity lab", "home pentest lab", "home hacking lab", "soc lab", "security lab", "cyber range",
+    ],
+  },
 
   // ── Certifications ─────────────────────────────────────────────────────────
   "Security+": { aliases: ["comptia security+", "sec+", "security plus", "comptia sec+", "secplus", "sy0-701", "sy0-601"] },

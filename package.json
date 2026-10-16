@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:check": "bun run scripts/check-db.ts"
+    "db:check": "bun run scripts/check-db.ts",
+    "auth:reset-password": "bun --conditions react-server scripts/reset-password.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

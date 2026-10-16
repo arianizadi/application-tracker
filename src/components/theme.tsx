@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { radioKeyNav } from "@/lib/radio-keys";
+
 const KEY = "canopy:theme";
 type Theme = "light" | "dark" | "system";
 
@@ -51,8 +53,10 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
           type="button"
           role="radio"
           aria-checked={theme === o.value}
+          tabIndex={theme === o.value ? 0 : -1}
           onClick={() => setTheme(o.value)}
-          className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+          onKeyDown={(e) => radioKeyNav(e, options.map((x) => x.value), theme, setTheme)}
+          className={`rounded-full px-3 py-2.5 font-medium transition-colors sm:py-1.5 ${
             theme === o.value ? "bg-card text-ink shadow-soft" : "text-muted hover:text-ink"
           }`}
         >

@@ -152,7 +152,7 @@ export function FaqBrowser({ groups }: { groups: FaqGroup[] }) {
               <a
                 key={g.id}
                 href={`#${g.id}`}
-                className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-line bg-card px-3.5 text-sm text-ink-soft transition-colors hover:border-moss/40 hover:text-ink"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-line bg-card px-3.5 sm:min-h-9 text-sm text-ink-soft transition-colors hover:border-moss/40 hover:text-ink"
               >
                 {g.title}
               </a>
@@ -219,7 +219,7 @@ export function FaqBrowser({ groups }: { groups: FaqGroup[] }) {
                             <Link
                               key={link.href}
                               href={link.href}
-                              className="inline-flex min-h-9 items-center gap-1 rounded-full bg-moss-soft px-3.5 text-sm font-medium text-moss-strong hover:bg-moss/15"
+                              className="inline-flex min-h-11 items-center gap-1 rounded-full bg-moss-soft px-3.5 sm:min-h-9 text-sm font-medium text-moss-strong hover:bg-moss/15"
                             >
                               {link.label}
                               <span aria-hidden>→</span>

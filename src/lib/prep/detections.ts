@@ -16,6 +16,7 @@
  * Pure and deterministic: no I/O, no clock reads (pass `now`), safe in tests.
  */
 import type { MascotName } from "@/components/mascots/data";
+import { dateKeyInZone, dateToKey, daysBetweenKeys } from "@/lib/applications/dates";
 import type { SnapshotAnalysis, SnapshotApplication, UserSnapshot } from "@/lib/data/snapshot";
 
 // ── Public types ────────────────────────────────────────────────────────────
@@ -294,7 +295,7 @@ export const RULES = {
   "iam-interview": { title: "Identity lifecycle", kind: "stage", priority: 95, moduleIds: ["cloud-and-identity", "security-fundamentals"], resourceIds: ["r44" /* Microsoft Entra */, "r84" /* NIST 800-63B */], mascot: "pip", tone: "interview" },
   "grc-interview": { title: "Risk and evidence", kind: "stage", priority: 95, moduleIds: ["grc-and-risk", "behavioral-security-interviews"], resourceIds: ["r50" /* NIST CSF 2.0 */, "r52" /* AICPA SOC */], mascot: "pip", tone: "interview" },
   "general-interview": { title: "Prepare for your interview", kind: "stage", priority: 93, moduleIds: ["security-fundamentals", "technical-scenarios", "behavioral-security-interviews"], resourceIds: ["r61" /* Miessler 60 questions */, "r63" /* Jassics */], mascot: "pip", tone: "interview" },
-  "interview-new-stage": { title: "Prepare the story bank", kind: "stage", priority: 94, moduleIds: ["behavioral-security-interviews"], resourceIds: ["r64" /* Harvard résumé */], mascot: "pip", tone: "interview" },
+  "interview-new-stage": { title: "Prepare the story bank", kind: "stage", priority: 94, moduleIds: ["behavioral-security-interviews"], resourceIds: [], mascot: "pip", tone: "interview" },
   "multiple-interviews": { title: "Consolidate preparation", kind: "stage", priority: 92, moduleIds: ["behavioral-security-interviews", "technical-scenarios", "portfolio-and-projects"], resourceIds: [], mascot: "pip", tone: "interview" },
   "accepted-stage": { title: "Shift to internship readiness", kind: "stage", priority: 90, moduleIds: ["operating-systems-security", "security-fundamentals", "behavioral-security-interviews"], resourceIds: [], mascot: "miso", tone: "celebrate" },
 
@@ -325,7 +326,7 @@ export const RULES = {
   "application-gap": { title: "Restart with a small step", kind: "habit", priority: 38, moduleIds: ["security-internship-hiring"], resourceIds: ["r74" /* Microsoft students */, "r76" /* Amazon Security Careers */], mascot: "fern", tone: "habit" },
 
   // Canopy fallbacks.
-  onboarding: { title: "Start here", kind: "welcome", priority: 60, moduleIds: ["security-internship-hiring", "networking-fundamentals"], resourceIds: ["r53" /* NICE */, "r01" /* Cisco Networking Basics */], mascot: "alder", tone: "welcome" },
+  onboarding: { title: "Your first prep steps", kind: "welcome", priority: 60, moduleIds: ["security-internship-hiring", "networking-fundamentals"], resourceIds: ["r53" /* NICE */, "r01" /* Cisco Networking Basics */], mascot: "alder", tone: "welcome" },
   "next-module": { title: "Next in the course", kind: "course", priority: 22, moduleIds: [], resourceIds: [], mascot: "acorn", tone: "course" },
   "generic-hiring": { title: "How internship hiring works", kind: "course", priority: 20, moduleIds: ["security-internship-hiring"], resourceIds: ["r64" /* Harvard */], mascot: "alder", tone: "course" },
   "generic-behavioral": { title: "Build your story bank", kind: "course", priority: 19, moduleIds: ["behavioral-security-interviews"], resourceIds: [], mascot: "pip", tone: "course" },
@@ -459,6 +460,8 @@ const ANALYSIS_WINDOW_DAYS = 60;
 
 type Facts = {
   now: number;
+  /** The user's calendar day ("YYYY-MM-DD"), for day-granular fields like deadlines. */
+  todayKey: string;
   track: string;
   cyber: boolean;
   apps: SnapshotApplication[];
@@ -507,7 +510,7 @@ function everInterviewed(app: SnapshotApplication): boolean {
   return app.status === "INTERVIEW" || app.status === "OFFER" || app.status === "ACCEPTED" || (app.history ?? []).some((h) => h.status === "INTERVIEW");
 }
 
-function collectFacts(snapshot: UserSnapshot, track: string, now: Date): Facts {
+function collectFacts(snapshot: UserSnapshot, track: string, now: Date, todayKey: string): Facts {
   const nowMs = now.getTime();
   const cyber = track === "cybersecurity";
   const apps = snapshot.applications ?? [];
@@ -549,6 +552,7 @@ function collectFacts(snapshot: UserSnapshot, track: string, now: Date): Facts {
 
   return {
     now: nowMs,
+    todayKey,
     track,
     cyber,
     apps,
@@ -561,6 +565,12 @@ function collectFacts(snapshot: UserSnapshot, track: string, now: Date): Facts {
     hasAccepted: apps.some((a) => a.status === "ACCEPTED"),
     interviewing: apps.filter((a) => a.status === "INTERVIEW"),
   };
+}
+
+/** Calendar days from today to a day-granular date (negative when past), or null if unknown. */
+function daysUntil(f: Facts, value: Date | string | null | undefined): number | null {
+  const key = dateToKey(value);
+  return key ? daysBetweenKeys(f.todayKey, key) : null;
 }
 
 function hasTarget(f: Facts, ...groups: TrackGroup[]): boolean {
@@ -576,16 +586,28 @@ type KeywordStatus = {
   evaluatedCount: number;
 };
 
+/** Normalized found/missing terms per analysis, computed once and shared by every keyword rule. */
+const normalizedTerms = new WeakMap<SnapshotAnalysis, { found: Set<string>; missing: Set<string> }>();
+
+function termSets(a: SnapshotAnalysis): { found: Set<string>; missing: Set<string> } {
+  let sets = normalizedTerms.get(a);
+  if (!sets) {
+    sets = { found: new Set((a.found ?? []).map(normalizeKeyword)), missing: new Set((a.missing ?? []).map(normalizeKeyword)) };
+    normalizedTerms.set(a, sets);
+  }
+  return sets;
+}
+
 function keywordStatus(f: Facts, keys: string[]): KeywordStatus {
-  const wanted = new Set(keys.map(normalizeKeyword));
-  const has = (list: string[]) => list.some((t) => wanted.has(normalizeKeyword(t)));
+  const wanted = keys.map(normalizeKeyword);
   let latest: SnapshotAnalysis | null = null;
   let latestMissing = false;
   let missingCount = 0;
   let evaluatedCount = 0;
   for (const a of f.analyses) {
-    const missing = has(a.missing ?? []);
-    const found = has(a.found ?? []);
+    const terms = termSets(a);
+    const missing = wanted.some((k) => terms.missing.has(k));
+    const found = wanted.some((k) => terms.found.has(k));
     if (!missing && !found) continue;
     evaluatedCount += 1;
     if (missing && !found) missingCount += 1;
@@ -629,15 +651,14 @@ function detectStages(f: Facts): Candidate[] {
   // assessment-active
   const assessing = f.apps.filter((a) => a.status === "ASSESSMENT");
   if (assessing.length) {
-    let soonest: number | null = null;
+    let days: number | null = null;
     for (const a of assessing) {
-      const d = ms(a.deadline);
-      if (d !== null && d >= f.now - DAY && (soonest === null || d < soonest)) soonest = d;
+      const d = daysUntil(f, a.deadline);
+      if (d !== null && d >= 0 && (days === null || d < days)) days = d;
     }
     let due = "";
     let priority = RULES["assessment-active"].priority;
-    if (soonest !== null) {
-      const days = Math.max(0, Math.ceil((soonest - f.now) / DAY));
+    if (days !== null) {
       due = days === 0 ? " It's due today." : days === 1 ? " It's due tomorrow." : days <= 14 ? ` It's due in ${days} days.` : "";
       if (days <= 3) priority += 2;
     }
@@ -724,9 +745,11 @@ function detectStages(f: Facts): Candidate[] {
   const offers = f.apps.filter((a) => a.status === "OFFER");
   if (offers.length) {
     let deadline = "";
-    const soonest = offers.map((a) => ms(a.deadline)).filter((t): t is number => t !== null && t >= f.now - DAY).sort((a, b) => a - b)[0];
-    if (soonest !== undefined) {
-      const days = Math.max(0, Math.ceil((soonest - f.now) / DAY));
+    const days = offers
+      .map((a) => daysUntil(f, a.deadline))
+      .filter((d): d is number => d !== null && d >= 0)
+      .sort((a, b) => a - b)[0];
+    if (days !== undefined) {
       deadline = days === 0 ? " The response deadline is today." : ` You have ${plural(days, "day")} until the response deadline.`;
     }
     out.push({
@@ -1086,10 +1109,16 @@ function fallbacks(f: Facts, taken: Recommendation[]): Candidate[] {
 
 /**
  * Deduped, prioritized prep recommendations (highest priority first, at most
- * MAX_RECOMMENDATIONS). Deterministic for a given snapshot, track and `now`.
+ * MAX_RECOMMENDATIONS). Deterministic for a given snapshot, track, `now` and
+ * `todayKey` (the user's calendar day; deadlines are compared by day, not instant).
  */
-export function getRecommendations(snapshot: UserSnapshot, track: string, now: Date): Recommendation[] {
-  const f = collectFacts(snapshot, track, now);
+export function getRecommendations(
+  snapshot: UserSnapshot,
+  track: string,
+  now: Date,
+  todayKey: string = dateKeyInZone(now, "UTC"),
+): Recommendation[] {
+  const f = collectFacts(snapshot, track, now, todayKey);
 
   let candidates = [...detectStages(f), ...detectWording(f), ...detectHabits(f), ...onboarding(f)];
   if (f.hasAccepted) candidates = candidates.filter((c) => !VOLUME_RULES.has(c.ruleId));

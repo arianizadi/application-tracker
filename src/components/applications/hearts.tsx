@@ -37,11 +37,14 @@ export function HeartsInput({
   onChange,
   name,
   id,
+  describedBy,
 }: {
   value: number;
   onChange: (value: number) => void;
   name?: string;
   id?: string;
+  /** id of an error or hint that describes the group. */
+  describedBy?: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -57,7 +60,7 @@ export function HeartsInput({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div role="radiogroup" aria-label="Excitement" id={id} className="flex items-center">
+      <div role="radiogroup" aria-label="Excitement" aria-describedby={describedBy} id={id} className="flex items-center">
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}

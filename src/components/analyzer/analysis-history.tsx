@@ -24,6 +24,9 @@ type ResumeInfo = { id: string; label: string; version: number };
 
 type Group = { key: string; label: string; kind: string; entries: HistoryAnalysis[] };
 
+/** Entries shown per group before "Show all". */
+const RECENT_ENTRIES = 10;
+
 const selectClass =
   "min-h-11 w-full rounded-xl border border-line-strong bg-card px-3 text-sm text-ink focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/25";
 
@@ -106,6 +109,9 @@ function HistoryGroup({ group, fmt, resumeName }: { group: Group; fmt: Intl.Date
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Closed groups render no body: up to 200 checks × 400 keyword chips adds up on mobile.
+  const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const entries = group.entries;
   const latest = entries[entries.length - 1];
   const prev = entries.length > 1 ? entries[entries.length - 2] : null;
@@ -132,12 +138,14 @@ function HistoryGroup({ group, fmt, resumeName }: { group: Group; fmt: Intl.Date
     });
   }
 
-  const newlyFound = a ? b.found.filter((t) => !a.found.includes(t)) : [];
-  const lost = a ? a.found.filter((t) => !b.found.includes(t)) : [];
+  const newlyFound = open && a ? b.found.filter((t) => !a.found.includes(t)) : [];
+  const lost = open && a ? a.found.filter((t) => !b.found.includes(t)) : [];
+  const newestFirst = [...entries].reverse();
+  const shown = showAll ? newestFirst : newestFirst.slice(0, RECENT_ENTRIES);
 
   return (
     <li>
-      <details className="group">
+      <details className="group" onToggle={(e) => setOpen(e.currentTarget.open)}>
         <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-5 py-3 hover:bg-paper-2/40 sm:px-6 [&::-webkit-details-marker]:hidden">
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium text-ink">{group.label}</p>
@@ -159,132 +167,148 @@ function HistoryGroup({ group, fmt, resumeName }: { group: Group; fmt: Intl.Date
           </svg>
         </summary>
 
-        <div className="flex flex-col gap-5 px-5 pb-5 sm:px-6">
-          {entries.length >= 2 && a ? (
-            <div className="rounded-2xl border border-line bg-paper-2/40 p-4">
-              <h3 className="text-sm font-semibold">Compare versions</h3>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {(
-                  [
-                    ["Before", a, setAId],
-                    ["After", b, setBId],
-                  ] as const
-                ).map(([label, value, set]) => (
-                  <div key={label} className="flex flex-col gap-1">
-                    <label htmlFor={`${group.key}-${label}`} className="text-xs font-medium text-ink-soft">
-                      {label}
-                    </label>
-                    <select id={`${group.key}-${label}`} className={selectClass} value={value.id} onChange={(e) => set(e.target.value)}>
-                      {[...entries].reverse().map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {`${fmt.format(new Date(e.createdAt))} · ${resumeName(e.resumeId)} · ${e.score}%`}
-                        </option>
-                      ))}
-                    </select>
+        {open ? (
+          <div className="flex flex-col gap-5 px-5 pb-5 sm:px-6">
+            {entries.length >= 2 && a ? (
+              <div className="rounded-2xl border border-line bg-paper-2/40 p-4">
+                <h3 className="text-sm font-semibold">Compare versions</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {(
+                    [
+                      ["Before", a, setAId],
+                      ["After", b, setBId],
+                    ] as const
+                  ).map(([label, value, set]) => (
+                    <div key={label} className="flex flex-col gap-1">
+                      <label htmlFor={`${group.key}-${label}`} className="text-xs font-medium text-ink-soft">
+                        {label}
+                      </label>
+                      <select id={`${group.key}-${label}`} className={selectClass} value={value.id} onChange={(e) => set(e.target.value)}>
+                        {newestFirst.map((e) => (
+                          <option key={e.id} value={e.id}>
+                            {`${fmt.format(new Date(e.createdAt))} · ${resumeName(e.resumeId)} · ${e.score}%`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-card p-2">
+                    <p className="text-xs text-muted">Before</p>
+                    <p className="font-display text-xl font-semibold tabular">{a.score}%</p>
                   </div>
-                ))}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl bg-card p-2">
-                  <p className="text-xs text-muted">Before</p>
-                  <p className="font-display text-xl font-semibold tabular">{a.score}%</p>
-                </div>
-                <div className="rounded-xl bg-card p-2">
-                  <p className="text-xs text-muted">After</p>
-                  <p className="font-display text-xl font-semibold tabular">{b.score}%</p>
-                </div>
-                <div className="rounded-xl bg-card p-2">
-                  <p className="text-xs text-muted">Change</p>
-                  <p className="font-display text-xl font-semibold tabular">
-                    <Delta value={b.score - a.score} />
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-moss">Newly found · {newlyFound.length}</p>
-                  {newlyFound.length ? (
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      {newlyFound.map((t) => (
-                        <li key={t} className="rounded-full bg-moss-soft px-2.5 py-1 text-xs font-medium text-moss-strong">
-                          + {t}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-sm text-muted">No new mentions.</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-coral">No longer found · {lost.length}</p>
-                  {lost.length ? (
-                    <ul className="mt-2 flex flex-wrap gap-1.5">
-                      {lost.map((t) => (
-                        <li key={t} className="rounded-full bg-coral-soft px-2.5 py-1 text-xs font-medium text-ink">
-                          − {t}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-sm text-muted">Nothing lost. Nice.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <ul className="flex flex-col gap-2">
-            {[...entries].reverse().map((e) => (
-              <li key={e.id} className="rounded-2xl border border-line p-3">
-                <div className="flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{resumeName(e.resumeId)}</p>
-                    <p className="text-xs text-muted">
-                      {fmt.format(new Date(e.createdAt))} · {e.found.length} found · {e.missing.length} missing
+                  <div className="rounded-xl bg-card p-2">
+                    <p className="text-xs text-muted">After</p>
+                    <p className="font-display text-xl font-semibold tabular">{b.score}%</p>
+                  </div>
+                  <div className="rounded-xl bg-card p-2">
+                    <p className="text-xs text-muted">Change</p>
+                    <p className="font-display text-xl font-semibold tabular">
+                      <Delta value={b.score - a.score} />
                     </p>
                   </div>
-                  <p className="font-display text-lg font-semibold tabular">{e.score}%</p>
-                  {confirmId === e.id ? (
-                    <div className="flex gap-1">
-                      <Button variant="danger" size="sm" disabled={pending} onClick={() => remove(e.id)}>
-                        Delete
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
-                        Keep
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button variant="ghost" size="icon" aria-label={`Delete check from ${fmt.format(new Date(e.createdAt))}`} onClick={() => setConfirmId(e.id)}>
-                      <svg viewBox="0 0 16 16" aria-hidden className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" />
-                      </svg>
-                    </Button>
-                  )}
                 </div>
-                {e.missing.length ? (
-                  <details className="group/miss mt-2">
-                    <summary className="flex min-h-11 cursor-pointer list-none items-center text-xs font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
-                      Show keywords
-                    </summary>
-                    <div className="flex flex-wrap gap-1.5 pb-1">
-                      {e.found.map((t) => (
-                        <span key={`f-${t}`} className="rounded-full bg-moss-soft px-2.5 py-1 text-xs text-moss-strong">
-                          {t}
-                        </span>
-                      ))}
-                      {e.missing.map((t) => (
-                        <span key={`m-${t}`} className="rounded-full bg-coral-soft px-2.5 py-1 text-xs text-ink">
-                          {t}
-                        </span>
-                      ))}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-moss">Newly found · {newlyFound.length}</p>
+                    {newlyFound.length ? (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {newlyFound.map((t) => (
+                          <li key={t} className="rounded-full bg-moss-soft px-2.5 py-1 text-xs font-medium text-moss-strong">
+                            + {t}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted">No new mentions.</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-coral">No longer found · {lost.length}</p>
+                    {lost.length ? (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {lost.map((t) => (
+                          <li key={t} className="rounded-full bg-coral-soft px-2.5 py-1 text-xs font-medium text-ink">
+                            − {t}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted">Nothing lost. Nice.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <ul className="flex flex-col gap-2">
+              {shown.map((e) => (
+                <li key={e.id} className="rounded-2xl border border-line p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{resumeName(e.resumeId)}</p>
+                      <p className="text-xs text-muted">
+                        {fmt.format(new Date(e.createdAt))} · {e.found.length} found · {e.missing.length} missing
+                      </p>
                     </div>
-                  </details>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </div>
+                    <p className="font-display text-lg font-semibold tabular">{e.score}%</p>
+                    {confirmId === e.id ? (
+                      <div className="flex gap-1">
+                        <Button variant="danger" size="sm" disabled={pending} onClick={() => remove(e.id)}>
+                          Delete
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
+                          Keep
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="icon" aria-label={`Delete check from ${fmt.format(new Date(e.createdAt))}`} onClick={() => setConfirmId(e.id)}>
+                        <svg viewBox="0 0 16 16" aria-hidden className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" />
+                        </svg>
+                      </Button>
+                    )}
+                  </div>
+                  <EntryKeywords found={e.found} missing={e.missing} />
+                </li>
+              ))}
+            </ul>
+            {entries.length > shown.length ? (
+              <Button variant="secondary" size="sm" className="self-start" onClick={() => setShowAll(true)}>
+                Show all {entries.length} checks
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </details>
     </li>
+  );
+}
+
+/** An entry's keyword chips, rendered only while expanded. */
+function EntryKeywords({ found, missing }: { found: string[]; missing: string[] }) {
+  const [open, setOpen] = useState(false);
+  if (!found.length && !missing.length) return null;
+  return (
+    <details className="group/miss mt-2" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center text-xs font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
+        Show keywords
+      </summary>
+      {open ? (
+        <div className="flex flex-wrap gap-1.5 pb-1">
+          {found.map((t) => (
+            <span key={`f-${t}`} className="rounded-full bg-moss-soft px-2.5 py-1 text-xs text-moss-strong">
+              {t}
+            </span>
+          ))}
+          {missing.map((t) => (
+            <span key={`m-${t}`} className="rounded-full bg-coral-soft px-2.5 py-1 text-xs text-ink">
+              {t}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </details>
   );
 }

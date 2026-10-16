@@ -2,13 +2,14 @@
 
 import type { ApplicationStatus, WorkMode } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useDeferredValue, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useDeferredValue, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 
 import { useCelebrate } from "@/components/fx";
 import { Mascot } from "@/components/mascots";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
+import { useBottomUi } from "@/hooks/use-bottom-ui";
 import { useHotkeys } from "@/hooks/use-hotkeys";
 import { bulkDeleteApplications, bulkUpdateStatus, updateStatus } from "@/lib/applications/actions";
 import { STATUS_TOAST } from "@/lib/applications/copy";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/applications/filter";
 import { WORK_MODES, WORK_MODE_LABEL } from "@/lib/applications/schema";
 import type { ApplicationListItem } from "@/lib/applications/types";
+import { radioKeyNav } from "@/lib/radio-keys";
 import { CLOSED_STATUSES, REACHED_INTERVIEW, STATUSES, STATUS_META } from "@/lib/status";
 
 import { isTemp } from "./application-card";
@@ -42,6 +44,7 @@ import { UndoBar, offerUndo } from "./undo";
 import { usePreference } from "./use-preference";
 
 type View = "board" | "list";
+const VIEWS = ["board", "list"] as const satisfies readonly View[];
 
 type Optimistic =
   | { type: "status"; ids: string[]; status: ApplicationStatus; at: Date; today: Date }
@@ -58,7 +61,8 @@ function reduce(state: ApplicationListItem[], action: Optimistic): ApplicationLi
               ...item,
               status: action.status,
               updatedAt: action.at,
-              appliedAt: action.status === "WISHLIST" ? null : (item.appliedAt ?? action.today),
+              // Withdrawing from the wishlist isn't applying; only real moves stamp appliedAt.
+              appliedAt: action.status === "WISHLIST" ? null : action.status === "WITHDRAWN" ? item.appliedAt : (item.appliedAt ?? action.today),
               history: [...item.history, { status: action.status, at: action.at }],
             }
           : item,
@@ -78,11 +82,13 @@ type MoveTarget = { ids: string[]; current?: ApplicationStatus; title: string };
 export function ApplicationsView({
   items,
   todayKey,
+  timeZone,
   nowMs,
   initialFilters,
 }: {
   items: ApplicationListItem[];
   todayKey: string;
+  timeZone: string;
   nowMs: number;
   initialFilters: ApplicationFilters & { view?: View };
 }) {
@@ -92,7 +98,7 @@ export function ApplicationsView({
   const [optimistic, applyOptimistic] = useOptimistic(items, reduce);
   const [, startTransition] = useTransition();
 
-  const [view, setView] = usePreference<View>("canopy:apps:view", initialFilters.view ?? "board", ["board", "list"] as const);
+  const [view, setView] = usePreference<View>("canopy:apps:view", initialFilters.view ?? "board", VIEWS);
   const [storedSort, setStoredSort] = usePreference<SortKey>("canopy:apps:sort", "recent", SORTS.map((s) => s.key));
   const [sortOverride, setSortOverride] = useState<SortKey | undefined>(initialFilters.sort);
   const sort: SortKey = sortOverride ?? storedSort;
@@ -116,6 +122,9 @@ export function ApplicationsView({
 
   const searchRef = useRef<HTMLInputElement>(null);
   const quickRef = useRef<HTMLInputElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  // Card whose Move button opened the sheet; focus returns to it after it re-renders elsewhere.
+  const refocus = useRef<{ id: string; until: number } | null>(null);
 
   const ctx = useMemo(() => ({ todayKey, nowMs }), [todayKey, nowMs]);
   const filters: ApplicationFilters = { q: deferredQ, statuses, workModes, source: source || undefined, flag };
@@ -172,7 +181,7 @@ export function ApplicationsView({
           : { title: `Moved ${changing.length} to ${STATUS_META[status].label}`, body: copy.body, tone: copy.tone === "celebrate" ? "celebrate" : "success" },
       );
       if (single) setHighlightId(single.id);
-      if (changing.length > 1) {
+      if (changing.length > 1 || inSelectMode) {
         setSelected(new Set());
         setSelectMode(false);
       }
@@ -242,13 +251,43 @@ export function ApplicationsView({
   const inSelectMode = selectMode || selectedIds.length > 0;
   const total = optimistic.length;
 
+  useBottomUi(toolbarRef, inSelectMode);
+
+  // A status change can move the card to another column (or row), which remounts
+  // it and drops focus to <body>. Put focus back on its Move button.
+  useLayoutEffect(() => {
+    const target = refocus.current;
+    if (!target || moveTarget) return;
+    if (Date.now() > target.until) {
+      refocus.current = null;
+      return;
+    }
+    const active = document.activeElement;
+    // Still on the original button: the card may yet move, so keep watching.
+    if (active instanceof HTMLElement && active.dataset.moveId === target.id) return;
+    if (active && active !== document.body) {
+      refocus.current = null;
+      return;
+    }
+    // The list renders a phone and a desktop variant; pick the one that's visible.
+    const el = [...document.querySelectorAll<HTMLElement>(`[data-move-id="${CSS.escape(target.id)}"]`)].find((b) => b.getClientRects().length > 0);
+    if (el) {
+      el.focus();
+      refocus.current = null;
+    }
+  }, [optimistic, moveTarget]);
+
   const shared = {
     todayKey,
+    timeZone,
     nowMs,
     selectMode: inSelectMode,
     selected,
     onToggleSelect: toggleSelect,
-    onMove: (item: ApplicationListItem) => setMoveTarget({ ids: [item.id], current: item.status, title: `Move ${item.company} to…` }),
+    onMove: (item: ApplicationListItem) => {
+      refocus.current = { id: item.id, until: Date.now() + 5000 };
+      setMoveTarget({ ids: [item.id], current: item.status, title: `Move ${item.company} to…` });
+    },
     highlightId,
   };
 
@@ -318,7 +357,7 @@ export function ApplicationsView({
                       e.currentTarget.blur();
                     }
                   }}
-                  placeholder="Search company, role, location…"
+                  placeholder="Search applications…"
                   className="h-11 w-full rounded-full border border-line-strong bg-card pl-10 pr-10 text-[15px] text-ink placeholder:text-muted/80 focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
                 />
                 <kbd aria-hidden className="pointer-events-none absolute right-3.5 top-1/2 hidden -translate-y-1/2 rounded border border-line bg-paper-2 px-1.5 font-mono text-[11px] text-muted sm:block">
@@ -327,13 +366,15 @@ export function ApplicationsView({
               </div>
 
               <div role="radiogroup" aria-label="View" className="inline-flex h-11 rounded-full border border-line bg-paper-2 p-1">
-                {(["board", "list"] as const).map((v) => (
+                {VIEWS.map((v) => (
                   <button
                     key={v}
                     type="button"
                     role="radio"
                     aria-checked={view === v}
+                    tabIndex={view === v ? 0 : -1}
                     onClick={() => setView(v)}
+                    onKeyDown={(e) => radioKeyNav(e, VIEWS, view, setView)}
                     title={v === "board" ? "Board (B)" : "List (L)"}
                     className={`flex items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors ${
                       view === v ? "bg-card text-ink shadow-soft" : "text-muted hover:text-ink"
@@ -424,7 +465,7 @@ export function ApplicationsView({
                       id="apps-source"
                       value={source}
                       onChange={(e) => setSource(e.target.value)}
-                      className={`h-9 rounded-full border px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-moss/25 ${
+                      className={`h-11 rounded-full border px-3 text-xs font-medium focus:outline-none sm:h-9 focus:ring-2 focus:ring-moss/25 ${
                         source ? "border-moss bg-moss-soft text-moss-strong" : "border-line bg-card text-ink-soft"
                       }`}
                     >
@@ -438,7 +479,7 @@ export function ApplicationsView({
                   </>
                 ) : null}
                 {filtering ? (
-                  <button type="button" onClick={clearFilters} className="h-9 rounded-full px-3 text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline">
+                  <button type="button" onClick={clearFilters} className="h-11 rounded-full px-3 text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline sm:h-9">
                     Clear filters
                   </button>
                 ) : null}
@@ -485,8 +526,8 @@ export function ApplicationsView({
       )}
 
       {inSelectMode ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[45] flex justify-center px-4 md:bottom-6 md:pl-64">
-          <div role="toolbar" aria-label="Bulk actions" className="pointer-events-auto flex w-full max-w-xl animate-rise items-center gap-2 rounded-2xl border border-line bg-card p-2 pl-4 shadow-lift">
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--dock-bottom)+0.75rem)] z-[45] flex justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:bottom-6 md:pl-[calc(16rem+env(safe-area-inset-left))]">
+          <div ref={toolbarRef} role="toolbar" aria-label="Bulk actions" className="pointer-events-auto flex w-full max-w-xl animate-rise items-center gap-2 rounded-2xl border border-line bg-card p-2 pl-4 shadow-lift">
             <p className="tabular min-w-0 flex-1 truncate text-sm font-medium" aria-live="polite">
               {selectedIds.length ? `${selectedIds.length} selected` : "Tap cards to select"}
             </p>
@@ -500,7 +541,10 @@ export function ApplicationsView({
             <button
               type="button"
               disabled={!selectedIds.length}
-              onClick={() => setMoveTarget({ ids: selectedIds, title: `Move ${selectedIds.length} ${selectedIds.length === 1 ? "application" : "applications"} to…` })}
+              onClick={() => {
+                refocus.current = null;
+                setMoveTarget({ ids: selectedIds, title: `Move ${selectedIds.length} ${selectedIds.length === 1 ? "application" : "applications"} to…` });
+              }}
               className="flex h-10 items-center gap-1.5 rounded-full bg-moss px-4 text-sm font-medium text-paper hover:bg-moss-strong disabled:opacity-50"
             >
               <AppIcon name="move" className="size-4" /> Move
@@ -574,7 +618,7 @@ function FilterChip({
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors ${
+      className={`flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors sm:h-9 ${
         pressed ? on : "border-line bg-card text-ink-soft hover:border-line-strong hover:text-ink"
       }`}
     >

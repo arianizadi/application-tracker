@@ -4,17 +4,20 @@ import type { ApplicationStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { requireUser } from "@/lib/auth/dal";
-import { dateKeyInZone, dateKeyToDate } from "@/lib/applications/dates";
+import { dateKeyInZone, dateKeyToDate, dateToKey, isDateKey, noonInZone } from "@/lib/applications/dates";
 import {
+  DIRTY_FIELDS,
   MAX,
   createApplicationSchema,
   formDataToObject,
+  isEditableField,
   objectId,
   quickAddSchema,
   restoreSchema,
   statusSchema,
   toFieldErrors,
   updateApplicationSchema,
+  type EditableField,
   type QuickAddInput,
 } from "@/lib/applications/schema";
 import type {
@@ -66,6 +69,13 @@ async function ownedResumeId(userId: string, resumeId: string | null): Promise<s
   return found ? resumeId : false;
 }
 
+/** Submitted applications (mirrors isSubmitted in lib/game/stats), for planting milestones. */
+function submittedCount(userId: string): Promise<number> {
+  return prisma.application.count({
+    where: { userId, OR: [{ status: { notIn: ["WISHLIST", "WITHDRAWN"] } }, { appliedAt: { not: null } }] },
+  });
+}
+
 async function defaultResumeId(userId: string): Promise<string | null> {
   const r = await prisma.resume.findFirst({ where: { userId, isDefault: true }, select: { id: true } });
   return r?.id ?? null;
@@ -108,7 +118,7 @@ export async function createApplication(_prev: ApplicationFormState, formData: F
     select: { id: true },
   });
   invalidate(user.id, "applications");
-  return { ok: true, id: created.id };
+  return { ok: true, id: created.id, submitted: submitted ? await submittedCount(user.id) : undefined };
 }
 
 /** The under-ten-seconds flow: company + role (+ optional link/source/status). */
@@ -138,7 +148,8 @@ export async function quickAddApplication(input: QuickAddInput): Promise<ActionR
     select: LIST_SELECT,
   });
   invalidate(user.id, "applications");
-  return { ok: true, data: { item, total: count + 1 } };
+  // `total` drives the milestone toast, so count submitted applications, not wishlist saves.
+  return { ok: true, data: { item, total: await submittedCount(user.id) } };
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
@@ -148,18 +159,28 @@ export async function updateApplication(id: string, _prev: ApplicationFormState,
   const user = await requireUser();
   const idOk = objectId.safeParse(id);
   if (!idOk.success) return { ok: false, error: "We couldn't find that application." };
-  const parsed = updateApplicationSchema.safeParse(formDataToObject(formData));
+
+  // Only write the fields the form says were edited, so a stale form can't revert
+  // a follow-up, resume link or date changed elsewhere. Without the list, write all.
+  const raw = formDataToObject(formData);
+  const dirty = formData.get(DIRTY_FIELDS);
+  const keys = typeof dirty === "string" ? dirty.split(",").filter(isEditableField) : (Object.keys(updateApplicationSchema.shape) as EditableField[]);
+  if (keys.length === 0) return { ok: true, id, message: "Nothing to save." };
+  const parsed = updateApplicationSchema.partial().safeParse(Object.fromEntries(keys.map((k) => [k, raw[k]])));
   if (!parsed.success) return { ok: false, error: "A couple of fields need a look.", fieldErrors: toFieldErrors(parsed.error) };
   const input = parsed.data;
 
   const existing = await prisma.application.findFirst({ where: { id, userId: user.id }, select: { status: true } });
   if (!existing) return { ok: false, error: "We couldn't find that application." };
 
-  const resumeId = await ownedResumeId(user.id, input.resumeId);
-  if (resumeId === false) return { ok: false, fieldErrors: { resumeId: "That resume version isn't available anymore." } };
+  const data: Prisma.ApplicationUncheckedUpdateManyInput = { ...input };
+  if (input.resumeId !== undefined) {
+    const resumeId = await ownedResumeId(user.id, input.resumeId);
+    if (resumeId === false) return { ok: false, fieldErrors: { resumeId: "That resume version isn't available anymore." } };
+    data.resumeId = resumeId;
+  }
 
   // Wishlist items have no applied date; submitted ones keep theirs unless edited.
-  const data: Prisma.ApplicationUncheckedUpdateManyInput = { ...input, resumeId };
   if (existing.status === "WISHLIST") data.appliedAt = null;
   else if (!input.appliedAt) delete data.appliedAt;
 
@@ -171,19 +192,35 @@ export async function updateApplication(id: string, _prev: ApplicationFormState,
 
 export type StatusChange = { id: string; status: ApplicationStatus; previous: ApplicationStatus; appliedAt: Date | null; at: Date };
 
+const dateKeySchema = z
+  .string()
+  .refine((v) => isDateKey(v) && +v.slice(0, 4) >= 2000 && +v.slice(0, 4) <= 2100, "Use a real date.");
+
+/** Withdrawing from the wishlist ("I decided not to apply") isn't applying. */
+function stampsAppliedAt(status: ApplicationStatus): boolean {
+  return status !== "WISHLIST" && status !== "WITHDRAWN";
+}
+
 /**
- * Moves one application to a new stage: appends {status, at} to history and
- * stamps appliedAt the first time it leaves the wishlist. Light guard: anything
- * that reached an assessment or beyond can't go back to the wishlist.
+ * Moves one application to a new stage: adds {status, at} to history and
+ * stamps appliedAt the first time it's submitted. Light guard: anything that
+ * reached an assessment or beyond can't go back to the wishlist.
+ *
+ * `dateKey` ("YYYY-MM-DD", optional) backdates the change to that day, for
+ * replies logged a few days late. It's clamped to [applied day, today]. The
+ * event is placed in date order; the newest event decides the current status,
+ * so backfilling an earlier step only adds it to the timeline.
  */
-export async function updateStatus(id: string, status: ApplicationStatus): Promise<ActionResult<StatusChange>> {
+export async function updateStatus(id: string, status: ApplicationStatus, dateKey?: string | null): Promise<ActionResult<StatusChange>> {
   const user = await requireUser();
-  const parsed = z.object({ id: objectId, status: statusSchema }).safeParse({ id, status });
+  const parsed = z
+    .object({ id: objectId, status: statusSchema, dateKey: dateKeySchema.nullish() })
+    .safeParse({ id, status, dateKey });
   if (!parsed.success) return { ok: false, error: "That status change didn't make sense." };
 
   const app = await prisma.application.findFirst({
     where: { id, userId: user.id },
-    select: { status: true, appliedAt: true, history: true },
+    select: { status: true, appliedAt: true, createdAt: true, history: true },
   });
   if (!app) return { ok: false, error: "We couldn't find that application." };
 
@@ -195,16 +232,27 @@ export async function updateStatus(id: string, status: ApplicationStatus): Promi
     return { ok: false, error: "This one is past the wishlist stage — try Withdrawn instead." };
   }
 
-  const event = { status, at: now };
+  // When it happened: now, or noon on the chosen day in the user's zone.
+  const todayKey = dateKeyInZone(now, user.timeZone);
+  const floorKey = app.appliedAt ? dateToKey(app.appliedAt) : dateKeyInZone(app.createdAt, user.timeZone);
+  let dayKey = parsed.data.dateKey ?? todayKey;
+  if (dayKey > todayKey) dayKey = todayKey;
+  if (dayKey < floorKey) dayKey = floorKey < todayKey ? floorKey : todayKey;
+  const at = dayKey === todayKey ? now : noonInZone(dayKey, user.timeZone);
+
+  const event = { status, at };
+  const sorted = [...app.history, event].sort((a, b) => +a.at - +b.at).slice(-MAX.history);
+  const latest = sorted[sorted.length - 1] === event;
+  const current = latest ? status : app.status;
   const data: Prisma.ApplicationUpdateManyMutationInput = {
-    status,
-    history: app.history.length >= MAX.history ? { set: [...app.history.slice(-(MAX.history - 1)), event] } : { push: event },
+    status: current,
+    history: latest && app.history.length < MAX.history ? { push: event } : { set: sorted },
   };
   let appliedAt = app.appliedAt;
-  if (status !== "WISHLIST" && !app.appliedAt) {
-    appliedAt = today(user.timeZone);
+  if (stampsAppliedAt(status) && !app.appliedAt) {
+    appliedAt = dateKeyToDate(dayKey);
     data.appliedAt = appliedAt;
-  } else if (status === "WISHLIST") {
+  } else if (current === "WISHLIST") {
     // Undoing an accidental "applied".
     appliedAt = null;
     data.appliedAt = null;
@@ -213,7 +261,7 @@ export async function updateStatus(id: string, status: ApplicationStatus): Promi
   const res = await prisma.application.updateMany({ where: { id, userId: user.id }, data });
   if (res.count === 0) return { ok: false, error: "We couldn't find that application." };
   invalidate(user.id, "applications");
-  return { ok: true, data: { id, status, previous: app.status, appliedAt, at: now } };
+  return { ok: true, data: { id, status: current, previous: app.status, appliedAt, at } };
 }
 
 /** Moves many applications at once (not to the wishlist). Skips ones already in that stage. */
@@ -228,11 +276,13 @@ export async function bulkUpdateStatus(ids: string[], status: ApplicationStatus)
   const event = { status, at: now };
   const base = { id: { in: unique }, userId: user.id, status: { not: status } };
 
-  // First stamp appliedAt on any that never had one, then move the rest.
-  const stamped = await prisma.application.updateMany({
-    where: { ...base, appliedAt: null },
-    data: { status, appliedAt: today(user.timeZone), history: { push: event } },
-  });
+  // First stamp appliedAt on any that never had one (unless they're being withdrawn), then move the rest.
+  const stamped = stampsAppliedAt(status)
+    ? await prisma.application.updateMany({
+        where: { ...base, appliedAt: null },
+        data: { status, appliedAt: today(user.timeZone), history: { push: event } },
+      })
+    : { count: 0 };
   const moved = await prisma.application.updateMany({
     where: base,
     data: { status, history: { push: event } },

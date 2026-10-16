@@ -7,7 +7,7 @@ import type { UserSnapshot } from "@/lib/data/snapshot";
 
 import { evaluateAchievements, type AchievementProgress } from "./achievements";
 import { levelFor, type Level } from "./levels";
-import { pickQuests, type Quest } from "./quests";
+import { pickQuests, type Quest, type QuestPick } from "./quests";
 import { computeRhythm, computeStats, type GameStats } from "./stats";
 import { weekStartDate } from "./time";
 import { computeXp, type XpSource } from "./xp";
@@ -20,7 +20,19 @@ export type GameUser = {
   track?: string;
 };
 
+/**
+ * What the game remembers between renders (see src/lib/game/memory.ts), so derived
+ * values never move backwards when data is deleted or edited.
+ */
+export type GameMemory = {
+  /** Highest XP total ever reached. XP (and so the level) never drops below it. */
+  xpBest: number;
+  /** Quests pinned the first time they were picked this week. */
+  quests: QuestPick | null;
+};
+
 export type GameState = {
+  /** Lifetime XP: never lower than the remembered best, so levels never drop. */
   xp: number;
   level: Level;
   nextLevel: Level | null;
@@ -46,19 +58,32 @@ export type GameState = {
   unlocked: string[];
   achievementProgress: Record<string, AchievementProgress>;
   quests: Quest[];
+  /** This week's quest pick, for the caller to remember (pinned on first pick). */
+  questPick: QuestPick;
   xpBreakdown: XpSource[];
   stats: GameStats;
 };
 
-export function computeGame(snapshot: UserSnapshot, user: GameUser, now: Date): GameState {
+export function computeGame(snapshot: UserSnapshot, user: GameUser, now: Date, memory: GameMemory | null = null): GameState {
   const tz = user.timeZone || "UTC";
   const rhythm = computeRhythm(snapshot, user, now);
   const stats = computeStats(snapshot, tz, rhythm);
-  const { xp, breakdown } = computeXp(snapshot, tz);
+  const computed = computeXp(snapshot, tz);
+  // XP is derived from current data, so deleting a role or clearing a follow-up would lower it.
+  // The remembered best keeps the promise that nothing ever subtracts.
+  const kept = Math.max(0, (memory?.xpBest ?? 0) - computed.xp);
+  const xp = computed.xp + kept;
+  const breakdown =
+    kept > 0
+      ? [...computed.breakdown, { key: "kept", label: "Earned earlier, yours to keep", count: 0, xp: kept }].sort((a, b) => b.xp - a.xp)
+      : computed.breakdown;
   const { level, nextLevel, levelProgress } = levelFor(xp);
   const achievementProgress = evaluateAchievements(stats);
   const unlocked = Object.keys(achievementProgress).filter((k) => achievementProgress[k].unlocked);
-  const quests = pickQuests({ snapshot, stats, rhythm, track: user.track ?? "", tz, now, week: rhythm.currentWeek });
+  const { quests, pick: questPick } = pickQuests(
+    { snapshot, stats, rhythm, track: user.track ?? "", tz, now, week: rhythm.currentWeek },
+    memory?.quests ?? null,
+  );
 
   return {
     xp,
@@ -78,6 +103,7 @@ export function computeGame(snapshot: UserSnapshot, user: GameUser, now: Date): 
     unlocked,
     achievementProgress,
     quests,
+    questPick,
     xpBreakdown: breakdown,
     stats,
   };
@@ -95,6 +121,6 @@ export {
   type AchievementProgress,
   type BadgeMotif,
 } from "./achievements";
-export type { Quest } from "./quests";
+export type { Quest, QuestPick } from "./quests";
 export type { GameStats } from "./stats";
 export { XP, type XpSource } from "./xp";

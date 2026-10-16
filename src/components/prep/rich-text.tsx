@@ -162,7 +162,7 @@ function CodeFigure({ code, lang, caption }: { code: string; lang?: string; capt
         <pre
           tabIndex={0}
           aria-label={lang ? `${lang} code` : "Code"}
-          className="overflow-x-auto px-4 py-4 font-mono text-[13px] leading-[1.65] text-ink focus-visible:outline-offset-[-2px]"
+          className="scroll-fade-x overflow-x-auto px-4 py-4 font-mono text-[13px] leading-[1.65] text-ink focus-visible:outline-offset-[-2px]"
         >
           <code>{code}</code>
         </pre>
@@ -186,7 +186,7 @@ function DiagramFigure({ lines, caption }: { lines: string[]; caption: string })
         <pre
           tabIndex={0}
           aria-label={`Diagram: ${plainText(caption)}`}
-          className="overflow-x-auto px-4 pb-4 pt-7 font-mono text-[12px] leading-[1.6] text-ink sm:px-6 sm:text-[13px] focus-visible:outline-offset-[-2px]"
+          className="scroll-fade-x overflow-x-auto px-4 pb-4 pt-7 font-mono text-[12px] leading-[1.6] text-ink [--scroll-fade-bg:var(--color-card)] sm:px-6 sm:text-[13px] focus-visible:outline-offset-[-2px]"
         >
           {lines.join("\n")}
         </pre>

@@ -9,7 +9,7 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { useToast } from "@/components/ui/toast";
 import { updateStatus } from "@/lib/applications/actions";
 import { STATUS_TOAST } from "@/lib/applications/copy";
-import { daysBetween, formatInstant, longDuration } from "@/lib/applications/dates";
+import { daysBetween, daysBetweenKeys, formatDateKey, formatInstant, longDuration, noonInZone, relativeDays } from "@/lib/applications/dates";
 import { ACTIVE_STATUSES, CLOSED_STATUSES, STATUS_META } from "@/lib/status";
 
 import { AppIcon } from "./icons";
@@ -51,6 +51,8 @@ export function StatusPanel({
   history,
   timeZone,
   nowMs,
+  todayKey,
+  minDateKey,
 }: {
   id: string;
   company: string;
@@ -58,24 +60,37 @@ export function StatusPanel({
   history: Event[];
   timeZone: string;
   nowMs: number;
+  /** Today in the user's zone; status changes can't be dated later. */
+  todayKey: string;
+  /** Earliest day a change can be dated (the applied day, or when it was saved). */
+  minDateKey: string;
 }) {
   const toast = useToast();
   const { celebrate } = useCelebrate();
   const [pending, startTransition] = useTransition();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [burst, setBurst] = useState(0);
-  const [optimistic, setOptimistic] = useOptimistic({ status, history }, (state, next: Event) => ({
-    status: next.status,
-    history: [...state.history, next],
-  }));
+  // Replies often get logged days later; this dates the next change.
+  const [whenKey, setWhenKey] = useState(todayKey);
+  const [optimistic, setOptimistic] = useOptimistic({ status, history }, (state, next: Event) => {
+    const events = [...state.history, next].sort((a, b) => +new Date(a.at) - +new Date(b.at));
+    // The newest event decides the current status (backfilled steps only join the timeline).
+    return { status: events[events.length - 1] === next ? next.status : state.status, history: events };
+  });
 
   function move(next: ApplicationStatus) {
     if (next === optimistic.status) return;
+    const dateKey = whenKey < minDateKey ? minDateKey : whenKey > todayKey ? todayKey : whenKey;
     startTransition(async () => {
-      setOptimistic({ status: next, at: new Date() });
-      const res = await updateStatus(id, next);
+      setOptimistic({ status: next, at: dateKey === todayKey ? new Date() : noonInZone(dateKey, timeZone) });
+      const res = await updateStatus(id, next, dateKey === todayKey ? null : dateKey);
       if (!res.ok) {
         toast({ title: "That didn't stick", body: res.error, tone: "warning" });
+        return;
+      }
+      setWhenKey(todayKey);
+      if (res.data.status !== next) {
+        toast({ title: "Added to the timeline", body: `${STATUS_META[next].label} on ${formatDateKey(dateKey, todayKey)}. The newer step stays current.`, tone: "info" });
         return;
       }
       const copy = STATUS_TOAST[next];
@@ -138,7 +153,10 @@ export function StatusPanel({
 
       {/* Quick moves */}
       <div className="mt-6">
-        <p className="mb-2 text-sm font-medium text-ink-soft">Update status</p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <p className="text-sm font-medium text-ink-soft">Update status</p>
+          <WhenInput value={whenKey} onChange={setWhenKey} min={minDateKey} max={todayKey} id="status-when" />
+        </div>
         <div className="flex flex-wrap gap-2">
           {NEXT[current].map((s) => (
             <button
@@ -205,7 +223,33 @@ export function StatusPanel({
         title={`Move ${company} to…`}
         current={current}
         onPick={move}
-      />
+      >
+        <WhenInput value={whenKey} onChange={setWhenKey} min={minDateKey} max={todayKey} id="status-when-sheet" />
+      </StatusSheet>
     </div>
+  );
+}
+
+/** "Happened today" by default; pick an earlier day for changes logged late. */
+function WhenInput({ id, value, onChange, min, max }: { id: string; value: string; onChange: (key: string) => void; min: string; max: string }) {
+  const days = daysBetweenKeys(max, value);
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-xs text-muted">
+      <span>When did it happen?</span>
+      <input
+        id={id}
+        type="date"
+        value={value}
+        min={min}
+        max={max}
+        required
+        onChange={(e) => onChange(e.target.value || max)}
+        aria-describedby={`${id}-hint`}
+        className="h-11 rounded-full border border-line-strong bg-card px-3 text-xs font-medium text-ink focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/25 sm:h-9"
+      />
+      <span id={`${id}-hint`} className="sr-only">
+        {days === 0 ? "Today" : relativeDays(days)}
+      </span>
+    </label>
   );
 }

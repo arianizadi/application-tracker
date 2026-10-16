@@ -49,13 +49,21 @@ export type Layer = 0 | 1 | 2; // 0 back hills · 1 middle grove · 2 foreground
 export type Slot = { x: number; y: number; layer: Layer; scale: number };
 
 /**
- * The planting plan: a fixed, pre-shuffled list of spots. Application #n (in
- * the order they were planted) always gets slot #n, so adding a tree never
- * moves the others. Spots near the centre fill first so a young forest looks
- * intentional on every screen size.
+ * The planting plan: a fixed list of spots, ordered centre-first. Each tree
+ * draws its spot from its own id (see `deriveForest`), so adding a tree never
+ * moves the others and deleting one only nudges the few trees that wanted its
+ * spot. Central spots are strongly preferred (`SLOT_COST`) so a young forest
+ * still looks intentional on every screen size.
  */
 export const SLOTS: readonly Slot[] = buildSlots();
 export const MAX_TREES = 120;
+
+/**
+ * Per-slot cost multiplier for the weighted draw: slot n is e^(n/6) times
+ * costlier than slot 0, so a small forest stays in the middle band while every
+ * tree still has its own, id-seeded ranking of spots to fall back on.
+ */
+export const SLOT_COST: readonly number[] = Array.from({ length: MAX_TREES }, (_, n) => Math.exp(n / 6));
 
 function buildSlots(): Slot[] {
   const r = rng(20251016);

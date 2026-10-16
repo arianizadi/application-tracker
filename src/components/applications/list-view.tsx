@@ -16,7 +16,7 @@ import { Hearts } from "./hearts";
 
 const PAGE = 100;
 
-type Props = Pick<CardProps, "todayKey" | "nowMs" | "selectMode" | "onMove"> & {
+type Props = Pick<CardProps, "todayKey" | "timeZone" | "nowMs" | "selectMode" | "onMove"> & {
   items: ApplicationListItem[];
   selected: Set<string>;
   onToggleSelect: (id: string) => void;
@@ -107,9 +107,15 @@ export function ListView({ items, selected, onToggleSelect, onToggleAll, highlig
                   </td>
                   <td className="px-3 py-3 align-top">
                     {temp ? (
-                      <span className="font-semibold">{item.company}</span>
+                      <span title={item.company} className="block truncate font-semibold">
+                        {item.company}
+                      </span>
                     ) : (
-                      <Link href={`/applications/${item.id}`} className="font-semibold text-ink hover:text-moss hover:underline hover:underline-offset-4">
+                      <Link
+                        href={`/applications/${item.id}`}
+                        title={item.company}
+                        className="block truncate font-semibold text-ink hover:text-moss hover:underline hover:underline-offset-4"
+                      >
                         {item.company}
                       </Link>
                     )}
@@ -125,6 +131,7 @@ export function ListView({ items, selected, onToggleSelect, onToggleAll, highlig
                       <button
                         type="button"
                         onClick={() => shared.onMove?.(item)}
+                        data-move-id={item.id}
                         aria-label={`Change status of ${item.company}, currently ${STATUS_META[item.status].label}`}
                         className="rounded-full transition-transform hover:scale-[1.03]"
                       >

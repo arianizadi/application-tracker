@@ -2,7 +2,7 @@ import type { MascotName } from "@/components/mascots";
 import type { UserSnapshot } from "@/lib/data/snapshot";
 
 import { isPrepDone, type GameStats, type Rhythm } from "./stats";
-import { DAY_MS, weekOf } from "./time";
+import { DAY_MS, partsOfDateOnly, weekOf } from "./time";
 import { XP } from "./xp";
 
 export type Quest = {
@@ -43,21 +43,33 @@ type Ctx = {
 type Template = {
   id: string;
   kind: "apply" | "other";
+  /** Whether to offer this quest when the week's set is first picked. */
   relevant: (c: Ctx) => boolean;
+  /**
+   * Whether build() can run at all (defaults to always). A pinned quest stays for the
+   * whole week even once it is no longer relevant, and only drops off if this fails.
+   */
+  available?: (c: Ctx) => boolean;
   build: (c: Ctx) => Omit<Quest, "id" | "done">;
 };
 
+/** The quest templates picked for one week, pinned so the set doesn't reshuffle mid-week. */
+export type QuestPick = { week: number; ids: string[] };
+
 const thisWeek = (c: Ctx, d: Date | null | undefined) => !!d && weekOf(new Date(d), c.tz) === c.week;
+/** For day-granular fields (appliedAt): stored at noon UTC, so read the day, not an instant. */
+const appliedThisWeek = (c: Ctx, d: Date | null | undefined) => !!d && partsOfDateOnly(d).week === c.week;
 
 const TEMPLATES: Template[] = [
   {
     id: "apply-track",
     kind: "apply",
     relevant: (c) => c.track in TRACK_ROLES,
+    available: (c) => c.track in TRACK_ROLES,
     build: (c) => {
       const { label, pattern } = TRACK_ROLES[c.track];
       const target = c.track === "cybersecurity" ? 3 : 2;
-      const progress = c.snapshot.applications.filter((a) => thisWeek(c, a.appliedAt) && pattern.test(a.role)).length;
+      const progress = c.snapshot.applications.filter((a) => appliedThisWeek(c, a.appliedAt) && pattern.test(a.role)).length;
       return {
         title: c.track === "cybersecurity" ? `Apply to ${target} SOC or security roles` : `Apply to ${target} ${label} roles`,
         detail: "Aim the effort where your heart (and your coursework) already is.",
@@ -82,7 +94,7 @@ const TEMPLATES: Template[] = [
     build: (c) => ({
       title: "Turn one wishlist role into a real application",
       detail: `${c.stats.wishlistNow} saved ${c.stats.wishlistNow === 1 ? "role is" : "roles are"} waiting. Pick the one that still sparks joy.`,
-      progress: Math.min(1, c.snapshot.applications.filter((a) => thisWeek(c, a.appliedAt) && a.history.some((h) => h.status === "WISHLIST")).length),
+      progress: Math.min(1, c.snapshot.applications.filter((a) => appliedThisWeek(c, a.appliedAt) && a.history.some((h) => h.status === "WISHLIST")).length),
       target: 1, xp: XP.submitted, href: "/applications?status=WISHLIST", mascot: "alder",
     }),
   },
@@ -93,7 +105,7 @@ const TEMPLATES: Template[] = [
     build: (c) => ({
       title: "Shoot your shot at a dream role",
       detail: "Apply to one role you rated four or five hearts. Worst case: a story.",
-      progress: Math.min(1, c.snapshot.applications.filter((a) => thisWeek(c, a.appliedAt) && a.excitement >= 4).length),
+      progress: Math.min(1, c.snapshot.applications.filter((a) => appliedThisWeek(c, a.appliedAt) && a.excitement >= 4).length),
       target: 1, xp: XP.submitted, href: "/applications?status=WISHLIST", mascot: "miso",
     }),
   },
@@ -121,6 +133,7 @@ const TEMPLATES: Template[] = [
     id: "analyze-newest",
     kind: "other",
     relevant: (c) => c.snapshot.resumes.length > 0,
+    available: (c) => c.snapshot.resumes.length > 0,
     build: (c) => {
       const newest = [...c.snapshot.resumes].sort((a, b) => b.version - a.version)[0];
       const done = c.snapshot.analyses.some((a) => a.resumeId === newest.id && thisWeek(c, a.createdAt));
@@ -215,21 +228,42 @@ function hash(input: string): number {
   return h >>> 0;
 }
 
-export function pickQuests(c: Ctx, count = 3): Quest[] {
+/** Fresh weekly ranking: one apply quest first, then the rest, topped up if a kind runs short. */
+function rankFresh(c: Ctx, count: number): Template[] {
   const relevant = TEMPLATES.filter((t) => t.relevant(c));
   const rank = (t: Template) => hash(`${c.week}:${t.id}`);
   const apply = relevant.filter((t) => t.kind === "apply").sort((a, b) => rank(a) - rank(b));
   const others = relevant.filter((t) => t.kind === "other").sort((a, b) => rank(a) - rank(b));
-  const chosen = [...apply.slice(0, 1), ...others.slice(0, count - 1)];
-  // Top up if there weren't enough "other" quests this week.
-  for (const t of [...apply.slice(1), ...others.slice(count - 1)]) {
-    if (chosen.length >= count) break;
-    chosen.push(t);
+  return [...apply.slice(0, 1), ...others.slice(0, count - 1), ...apply.slice(1), ...others.slice(count - 1)];
+}
+
+/**
+ * Picks this week's quests. Pass the week's pinned pick (see QuestPick) so quests stay put
+ * once chosen: relevance is only checked when the set is first picked, so finishing a quest
+ * (say, uploading the first resume) shows a checkmark instead of swapping in a new one.
+ */
+export function pickQuests(c: Ctx, pinned: QuestPick | null = null, count = 3): { quests: Quest[]; pick: QuestPick } {
+  const byId = new Map(TEMPLATES.map((t) => [t.id, t]));
+  const chosen: Template[] = [];
+  if (pinned?.week === c.week) {
+    for (const id of pinned.ids) {
+      const t = byId.get(id);
+      if (t && !chosen.includes(t) && (t.available?.(c) ?? true)) chosen.push(t);
+    }
   }
-  return chosen.map((t) => {
-    const q = t.build(c);
-    return { ...q, id: `${t.id}:${c.week}`, done: q.progress >= q.target };
-  });
+  // Fill any open slots (first pick of the week, or a pinned quest that can no longer run).
+  for (const t of rankFresh(c, count)) {
+    if (chosen.length >= count) break;
+    if (!chosen.includes(t)) chosen.push(t);
+  }
+  const picked = chosen.slice(0, count);
+  return {
+    quests: picked.map((t) => {
+      const q = t.build(c);
+      return { ...q, id: `${t.id}:${c.week}`, done: q.progress >= q.target };
+    }),
+    pick: { week: c.week, ids: picked.map((t) => t.id) },
+  };
 }
 
 export type { Ctx as QuestContext };

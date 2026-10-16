@@ -19,8 +19,8 @@ export const STATUS_META: Record<ApplicationStatus, { label: string; short: stri
   ASSESSMENT: { label: "Assessment", short: "OA", hint: "Online assessment or take-home", pill: "bg-sky-soft text-ink border-sky/50", dot: "bg-sky", color: "var(--sky)" },
   INTERVIEW: { label: "Interviewing", short: "Interview", hint: "Talking to humans", pill: "bg-sun-soft text-ink border-sun/60", dot: "bg-sun", color: "var(--sun)" },
   OFFER: { label: "Offer", short: "Offer", hint: "They want you!", pill: "bg-berry-soft text-berry border-berry/40", dot: "bg-berry", color: "var(--berry)" },
-  ACCEPTED: { label: "Accepted", short: "Accepted", hint: "Signed and celebrated", pill: "bg-berry text-white border-berry", dot: "bg-berry", color: "var(--berry)" },
-  REJECTED: { label: "Rejected", short: "No", hint: "Compost for the next one", pill: "bg-coral-soft text-coral border-coral/30", dot: "bg-coral", color: "var(--coral)" },
+  ACCEPTED: { label: "Accepted", short: "Accepted", hint: "Signed and celebrated", pill: "bg-berry text-on-berry border-berry", dot: "bg-berry", color: "var(--berry)" },
+  REJECTED: { label: "Rejected", short: "No", hint: "Compost for the next one", pill: "bg-coral-soft text-coral-ink border-coral/30", dot: "bg-coral", color: "var(--coral)" },
   GHOSTED: { label: "Ghosted", short: "Ghosted", hint: "No reply in a long while", pill: "bg-paper-2 text-muted border-line", dot: "bg-line-strong", color: "var(--line-strong)" },
   WITHDRAWN: { label: "Withdrawn", short: "Withdrew", hint: "You chose to step away", pill: "bg-paper-2 text-muted border-line", dot: "bg-muted", color: "var(--muted)" },
 };

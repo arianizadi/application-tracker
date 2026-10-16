@@ -348,6 +348,20 @@ describe("assessment-active", () => {
   test("does not trigger without an assessment", () => {
     expect(find(recs(snap({ applications: [app()] })), "assessment-active")).toBeUndefined();
   });
+
+  test("counts calendar days in the user's zone, not hours from now", () => {
+    // 3 AM in Los Angeles on Oct 16; deadlines are stored at noon UTC of their day.
+    const now = new Date("2026-10-16T10:00:00.000Z");
+    const tomorrow = new Date("2026-10-17T12:00:00.000Z");
+    const yesterday = new Date("2026-10-15T12:00:00.000Z");
+    const due = (deadline: Date, at: Date, todayKey: string) =>
+      find(getRecommendations(snap({ applications: [app({ status: "ASSESSMENT", company: "Quiz Co", deadline })] }), "cybersecurity", at, todayKey), "assessment-active")!.message;
+    expect(due(tomorrow, now, "2026-10-16")).toContain("due tomorrow");
+    // 1 AM in Los Angeles on Oct 16 is still within 24h of yesterday's deadline, but it has passed.
+    const late = due(yesterday, new Date("2026-10-16T08:00:00.000Z"), "2026-10-16");
+    expect(late).not.toContain("due today");
+    expect(late).not.toContain("due in");
+  });
 });
 
 describe("interview-new-stage", () => {

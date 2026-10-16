@@ -126,6 +126,7 @@ export type AnalysisResult = {
   stats: { recognized: number; found: number; resumeWords: number };
 };
 
+/** `fromPdf`: the resume text was extracted from an uploaded PDF (changes the short-text advice). */
 export type AnalyzeInput =
-  | { mode: "preset"; resumeText: string; presetKey: string; extraTerms?: string[]; title?: string }
-  | { mode: "jd"; resumeText: string; jobDescription: string; extraTerms?: string[]; title?: string };
+  | { mode: "preset"; resumeText: string; presetKey: string; extraTerms?: string[]; title?: string; fromPdf?: boolean }
+  | { mode: "jd"; resumeText: string; jobDescription: string; extraTerms?: string[]; title?: string; fromPdf?: boolean };

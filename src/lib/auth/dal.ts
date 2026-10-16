@@ -1,5 +1,6 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
@@ -14,10 +15,14 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 /**
  * For pages and Server Actions that require a signed-in user.
  * Redirects through /api/auth/expired so a stale cookie is cleared rather
- * than bouncing between /login and /home.
+ * than bouncing between /login and /home. The proxy tags app routes with
+ * x-pathname so sign-in can return the user to the page they were on.
  */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/api/auth/expired");
+  if (!user) {
+    const path = (await headers()).get("x-pathname");
+    redirect(path ? `/api/auth/expired?next=${encodeURIComponent(path)}` : "/api/auth/expired");
+  }
   return user;
 }

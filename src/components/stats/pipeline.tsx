@@ -1,3 +1,4 @@
+import type { ApplicationStatus } from "@prisma/client";
 import Link from "next/link";
 
 import { ChartCard } from "@/components/stats/chart-card";
@@ -16,6 +17,8 @@ const GROUPS = [
   { key: "offers", label: "Offers", color: "var(--berry)", statuses: ["OFFER", "ACCEPTED"] },
   { key: "closed", label: "Closed", color: "var(--line-strong)", statuses: ["REJECTED", "GHOSTED", "WITHDRAWN"] },
 ] as const;
+
+const CLOSED = new Set<ApplicationStatus>(["REJECTED", "GHOSTED", "WITHDRAWN"]);
 
 export function PipelineCard({ pipeline, wishlist, className = "" }: { pipeline: Stats["pipeline"]; wishlist: number; className?: string }) {
   const count = (s: string) => pipeline.statuses.find((x) => x.status === s)?.count ?? 0;
@@ -75,8 +78,14 @@ export function PipelineCard({ pipeline, wishlist, className = "" }: { pipeline:
                 <span aria-hidden className="h-2 rounded-full bg-paper-2">
                   {s.count > 0 ? (
                     <span
-                      className="stats-grow-x block h-full rounded-full bg-ink-soft/70"
-                      style={{ width: `${Math.max(4, (s.count / maxStatus) * 100)}%`, ["--i" as string]: i }}
+                      className="stats-grow-x block h-full rounded-full"
+                      style={{
+                        width: `${Math.max(4, (s.count / maxStatus) * 100)}%`,
+                        background: STATUS_META[s.status].color,
+                        // Closed outcomes stay quieter than the live pipeline.
+                        opacity: CLOSED.has(s.status) ? 0.6 : 1,
+                        ["--i" as string]: i,
+                      }}
                     />
                   ) : null}
                 </span>
@@ -92,7 +101,7 @@ export function PipelineCard({ pipeline, wishlist, className = "" }: { pipeline:
         <TipLayer>
           <ul className="mt-3 grid grid-cols-4 gap-2" aria-label="Waiting applications by age">
             {pipeline.pendingAge.map((b, i) => (
-              <li key={b.label} className="flex flex-col items-center gap-1.5" tabIndex={0} data-tip={`${b.label}: ${plural(b.count, "application")}`}>
+              <li key={b.label} className="flex flex-col items-center gap-1.5" data-tip={`${b.label}: ${plural(b.count, "application")}`}>
                 <span className="flex h-14 w-full items-end justify-center rounded-xl bg-paper-2/60">
                   {b.count > 0 ? (
                     <span

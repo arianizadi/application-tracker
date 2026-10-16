@@ -3,8 +3,9 @@ import type { CSSProperties } from "react";
 import type { GameState } from "@/lib/game";
 
 /**
- * XP progress toward the next level. Fill animates in on first paint with
- * CSS @starting-style (no JS), and respects reduced motion.
+ * XP progress toward the next level. Fill slides in on first paint with
+ * CSS @starting-style (no JS), animating transform only (no per-frame layout),
+ * and respects reduced motion.
  */
 export function XpBar({
   game,
@@ -47,7 +48,7 @@ export function XpBar({
       >
         <div
           style={{ "--xp": `${pct}%` } as CSSProperties}
-          className="relative h-full w-(--xp) rounded-full bg-gradient-to-r from-moss to-leaf transition-[width] duration-1000 ease-out starting:w-0 motion-reduce:transition-none"
+          className="relative h-full w-full translate-x-[calc(var(--xp)-100%)] rounded-full bg-gradient-to-r from-moss to-leaf transition-transform duration-1000 ease-out starting:-translate-x-full motion-reduce:transition-none"
         >
           <span aria-hidden className="absolute inset-y-0.5 left-1.5 right-1.5 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
         </div>

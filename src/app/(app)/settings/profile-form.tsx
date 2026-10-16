@@ -147,7 +147,7 @@ export function ProfileForm({ initial, timeZones }: { initial: ProfileValues; ti
           </button>
         </div>
         <p id={goalHintId} className="mt-2 text-sm text-muted">
-          {errors.weeklyGoal ? <span className="text-coral">{errors.weeklyGoal}</span> : goalCopy(goal)} Missing a week never breaks anything.
+          {errors.weeklyGoal ? <span className="text-coral">{errors.weeklyGoal}</span> : goalCopy(goal)} A missed week only affects your streak.
         </p>
       </fieldset>
 
@@ -185,7 +185,7 @@ export function ProfileForm({ initial, timeZones }: { initial: ProfileValues; ti
               <circle cx="10" cy="10" r="3" />
               <path d="M10 2v3M10 15v3M2 10h3M15 10h3" />
             </svg>
-            Use this device&apos;s
+            Use this device
           </Button>
         </div>
       </Field>
@@ -194,7 +194,7 @@ export function ProfileForm({ initial, timeZones }: { initial: ProfileValues; ti
       </p>
 
       {state?.error ? (
-        <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral">
+        <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">
           {state.error}
         </p>
       ) : null}

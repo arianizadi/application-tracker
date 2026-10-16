@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 
-import { CelebrationProvider } from "@/components/fx/celebrate";
 import { ThemeScript } from "@/components/theme";
 import { ToastProvider } from "@/components/ui/toast";
 
@@ -60,9 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeScript />
       </head>
       <body className="min-h-full bg-paper text-ink">
-        <ToastProvider>
-          <CelebrationProvider>{children}</CelebrationProvider>
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

@@ -13,7 +13,7 @@ import { usePreference } from "./use-preference";
 
 const PAGE = 40;
 
-type Shared = Pick<CardProps, "todayKey" | "nowMs" | "selectMode" | "onToggleSelect" | "onMove"> & {
+type Shared = Pick<CardProps, "todayKey" | "timeZone" | "nowMs" | "selectMode" | "onToggleSelect" | "onMove"> & {
   selected: Set<string>;
   highlightId: string | null;
 };
@@ -61,6 +61,7 @@ export function Board({
   const cardProps = (item: ApplicationListItem): CardProps => ({
     item,
     todayKey: shared.todayKey,
+    timeZone: shared.timeZone,
     nowMs: shared.nowMs,
     variant: "board",
     selectMode: shared.selectMode,
@@ -78,7 +79,7 @@ export function Board({
   });
 
   return (
-    <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 pb-4 [scrollbar-width:thin] snap-x snap-mandatory scroll-px-4 sm:-mx-6 sm:px-6 md:snap-none lg:-mx-10 lg:px-10">
+    <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 pb-4 [scrollbar-width:thin] snap-x snap-mandatory scroll-px-4 sm:-mx-6 sm:px-6 md:snap-none md:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] lg:-mx-10 lg:px-10">
       <div className="flex w-max gap-3 md:w-full">
         {ACTIVE_STATUSES.map((status) => (
           <Column key={status} status={status} count={byStatus.get(status)?.length ?? 0} isOver={over === status} {...dropProps(status)}>
@@ -99,7 +100,7 @@ export function Board({
                 type="button"
                 onClick={() => setClosedPref("collapsed")}
                 aria-expanded
-                className="flex h-9 items-center rounded-full px-3 text-xs font-medium text-muted hover:bg-card hover:text-ink"
+                className="flex h-11 items-center rounded-full px-3 text-xs font-medium text-muted hover:bg-card hover:text-ink sm:h-9"
               >
                 Collapse
               </button>
@@ -166,7 +167,7 @@ function Column({
     <section
       aria-label={`${meta.label}, ${count} applications`}
       {...drop}
-      className={`flex w-[min(80vw,19rem)] shrink-0 snap-start flex-col rounded-3xl border-2 transition-colors md:w-auto md:min-w-[13.5rem] md:flex-1 ${
+      className={`flex w-[min(80vw,19rem)] shrink-0 snap-start flex-col rounded-3xl border-2 transition-colors md:w-auto md:min-w-[12rem] md:flex-1 xl:min-w-[13.5rem] ${
         isOver ? "border-moss bg-moss-soft/60" : "border-transparent bg-paper-2/70"
       }`}
     >

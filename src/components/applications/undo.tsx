@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useSyncExternalStore, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
+import { useBottomUi } from "@/hooks/use-bottom-ui";
 import { restoreApplications } from "@/lib/applications/actions";
 import type { DeletedApplication } from "@/lib/applications/types";
 
@@ -41,6 +42,8 @@ export function UndoBar() {
   const current = useSyncExternalStore(subscribe, () => entry, () => null);
   const [pending, startTransition] = useTransition();
   const toast = useToast();
+  const barRef = useRef<HTMLDivElement>(null);
+  useBottomUi(barRef, Boolean(current));
 
   useEffect(() => {
     if (!current) return;
@@ -62,8 +65,9 @@ export function UndoBar() {
     });
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-[55] flex justify-center px-4 md:bottom-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--dock-bottom)+0.75rem)] z-[55] flex justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:bottom-6">
       <div
+        ref={barRef}
         role="status"
         aria-live="polite"
         className="pointer-events-auto flex w-full max-w-md animate-rise items-center gap-3 rounded-2xl bg-ink px-4 py-2.5 text-sm text-paper shadow-lift"

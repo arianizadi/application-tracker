@@ -67,14 +67,17 @@ export async function runAnalysis(input: RunAnalysisInput): Promise<RunAnalysisR
 
   let resumeText = data.resumeText ?? "";
   let resume: { id: string; label: string; version: number } | null = null;
+  // Only an uploaded PDF can "extract badly"; pasted text (directly or as a version) can't.
+  let fromPdf = false;
   if (data.resumeId) {
     const row = await prisma.resume.findFirst({
       where: { id: data.resumeId, userId: user.id },
-      select: { id: true, label: true, version: true, text: true },
+      select: { id: true, label: true, version: true, text: true, fileName: true },
     });
     if (!row) return { ok: false, error: "That resume version wasn't found." };
     resume = { id: row.id, label: row.label, version: row.version };
     resumeText = row.text.slice(0, LIMITS.resumeTextChars);
+    fromPdf = Boolean(row.fileName);
   }
 
   if (resumeText.trim().length < MIN_TEXT) {
@@ -90,8 +93,8 @@ export async function runAnalysis(input: RunAnalysisInput): Promise<RunAnalysisR
   }
 
   const result = data.preset
-    ? analyze({ mode: "preset", resumeText, presetKey: data.preset, extraTerms: data.extraTerms, title: data.title })
-    : analyze({ mode: "jd", resumeText, jobDescription: data.jobDescription!, extraTerms: data.extraTerms, title: data.title });
+    ? analyze({ mode: "preset", resumeText, presetKey: data.preset, extraTerms: data.extraTerms, title: data.title, fromPdf })
+    : analyze({ mode: "jd", resumeText, jobDescription: data.jobDescription!, extraTerms: data.extraTerms, title: data.title, fromPdf });
 
   let id: string | null = null;
   try {
@@ -108,19 +111,27 @@ export async function runAnalysis(input: RunAnalysisInput): Promise<RunAnalysisR
       select: { id: true },
     });
     id = saved.id;
-
-    const overflow = await prisma.analysis.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      skip: LIMITS.analyses,
-      select: { id: true },
-    });
-    if (overflow.length) {
-      await prisma.analysis.deleteMany({ where: { userId: user.id, id: { in: overflow.map((o) => o.id) } } });
-    }
     invalidate(user.id, "analyses", "achievements");
   } catch (error) {
     console.error("[analyzer] failed to save analysis", error);
+  }
+
+  if (id) {
+    // Best effort: a failed prune is retried by the next run (overflow is skip-based).
+    try {
+      const overflow = await prisma.analysis.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: "desc" },
+        skip: LIMITS.analyses,
+        select: { id: true },
+      });
+      if (overflow.length) {
+        await prisma.analysis.deleteMany({ where: { userId: user.id, id: { in: overflow.map((o) => o.id) } } });
+        invalidate(user.id, "analyses");
+      }
+    } catch (error) {
+      console.error("[analyzer] failed to prune analyses", error);
+    }
   }
 
   return { ok: true, id, result, analyzedText: resumeText.slice(0, 8000), resume };

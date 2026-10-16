@@ -131,7 +131,7 @@ const FALLBACK: CelebrateApi = {
   dismiss: () => {},
 };
 
-/** Mount once near the root (inside <body>). Renders celebrations into a portal on document.body. */
+/** Mount once in the signed-in layout (src/app/(app)/layout.tsx). Renders celebrations into a portal on document.body. */
 export function CelebrationProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Item[]>([]);
   const [said, setSaid] = useState<{ id: number; text: string } | null>(null);
@@ -205,9 +205,12 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
                 ),
               )}
               {cards.length > 0 ? (
-                <div className="pointer-events-none fixed inset-x-0 top-0 z-[85] flex flex-col items-center gap-2 px-4 pt-[max(1rem,env(safe-area-inset-top))] md:items-end md:pr-6">
-                  {cards.slice(-2).map((item) => (
-                    <CelebrationCard key={item.id} item={item} onClose={() => remove(item.id)} />
+                // Phones: one card at a time, below the sticky header so it doesn't hide it.
+                <div className="pointer-events-none fixed inset-x-0 top-14 z-[85] flex flex-col items-center gap-2 px-4 pt-3 md:top-0 md:items-end md:pr-6 md:pt-[max(1rem,env(safe-area-inset-top))]">
+                  {cards.slice(-2).map((item, i, shown) => (
+                    <div key={item.id} className={i === shown.length - 1 ? "contents" : "hidden md:contents"}>
+                      <CelebrationCard item={item} onClose={() => remove(item.id)} />
+                    </div>
                   ))}
                 </div>
               ) : null}

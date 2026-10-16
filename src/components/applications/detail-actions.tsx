@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { useToast } from "@/components/ui/toast";
+import { clearDraft } from "@/hooks/use-autosave";
 import { deleteApplication, duplicateApplication } from "@/lib/applications/actions";
 
 import { AppIcon } from "./icons";
@@ -38,9 +39,7 @@ export function DetailActions({ id, company, url }: { id: string; company: strin
         toast({ title: "Couldn't delete", body: res.error, tone: "warning" });
         return;
       }
-      try {
-        localStorage.removeItem(`canopy:draft:application:${id}`);
-      } catch {}
+      clearDraft(`application:${id}`);
       offerUndo(res.data.deleted, `Deleted ${company}`);
     });
   };

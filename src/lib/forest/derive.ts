@@ -10,7 +10,7 @@ import type { ApplicationStatus } from "@prisma/client";
 
 import type { UserSnapshot } from "@/lib/data/snapshot";
 
-import { MAX_TREES, SLOTS, type Layer } from "./layout";
+import { MAX_TREES, SLOT_COST, SLOTS, type Layer } from "./layout";
 import { clamp, pick, round, unit } from "./random";
 import { localClock, seasonOf, timeOfDayOf, toTime, type Season, type TimeOfDay } from "./time";
 
@@ -256,6 +256,8 @@ export function deriveForest(
       wishlist.push(app);
       continue;
     }
+    // Withdrawn straight from the wishlist ("decided not to apply") was never planted.
+    if (app.status === "WITHDRAWN" && !app.appliedAt && !(app.history ?? []).some((h) => h.status !== "WISHLIST" && h.status !== "WITHDRAWN")) continue;
 
     const created = toTime(app.createdAt) ?? nowMs;
     // "Entered the forest" = first non-wishlist event; keeps slots stable when a wish becomes an application.
@@ -307,10 +309,29 @@ export function deriveForest(
   const newest = planted[total - 1];
   const trees: ForestTree[] = [];
   let swaying = 0;
+  // Each tree's spot comes from its id, not its rank: a weighted draw over the
+  // free slots (exponential race, biased to the centre by SLOT_COST), claimed
+  // oldest-first. Adding a tree never moves the others, and deleting one only
+  // shifts trees that had wanted its spot — the forest grows instead of
+  // reshuffling. At most MAX_TREES trees are placed, so a free slot always exists.
+  const used = new Set<number>();
+  const slotOf = (id: string) => {
+    let best = 0;
+    let bestScore = Infinity;
+    for (let s = 0; s < MAX_TREES; s++) {
+      if (used.has(s)) continue;
+      const score = -Math.log(1 - unit(id, 100 + s)) * SLOT_COST[s];
+      if (score < bestScore) {
+        bestScore = score;
+        best = s;
+      }
+    }
+    used.add(best);
+    return SLOTS[best];
+  };
   for (let i = start; i < total; i++) {
     const { app, plantedAt, appliedAt } = planted[i];
-    // Slot n%120: once past 120, each new tree takes the oldest tree's spot (one change per add).
-    const slot = SLOTS[i % MAX_TREES];
+    const slot = slotOf(app.id);
     const age = daysAgo(appliedAt);
     const mark = MARKS[app.status];
     const fertilized = fertilizedIdx.has(i);

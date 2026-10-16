@@ -55,6 +55,21 @@ export function weekOfDay(dayNum: number): number {
   return Math.floor((dayNum + 3) / 7);
 }
 
+/**
+ * Day-granular fields (appliedAt, deadline, followUpAt) are stored at 12:00 UTC
+ * of their calendar day, so they are a *day*, not an instant: the UTC day is
+ * the user's day. Running them through a time zone would shift UTC+12…+14 users
+ * a day forward, and their hour of day is meaningless.
+ */
+export function dayNumOfDateOnly(date: Date | string): number {
+  return Math.floor(new Date(date).getTime() / DAY_MS);
+}
+
+export function partsOfDateOnly(date: Date | string): Omit<LocalParts, "hour"> {
+  const dayNum = dayNumOfDateOnly(date);
+  return { dayNum, week: weekOfDay(dayNum), weekday: (((dayNum + 3) % 7) + 7) % 7 };
+}
+
 export function weekOf(date: Date, timeZone: string): number {
   return localParts(date, timeZone).week;
 }

@@ -11,12 +11,14 @@ import { plantedMessage } from "@/lib/applications/copy";
 import { MAX } from "@/lib/applications/schema";
 import type { ApplicationListItem } from "@/lib/applications/types";
 import { looksLikeUrl, parseJobUrl, type JobUrlGuess } from "@/lib/applications/url-parse";
+import { radioKeyNav } from "@/lib/radio-keys";
 
 import { AppIcon } from "./icons";
 import { Sprout } from "./sprout";
 import { usePreference } from "./use-preference";
 
 type QuickStatus = "APPLIED" | "WISHLIST";
+const QUICK_STATUSES = ["APPLIED", "WISHLIST"] as const satisfies readonly QuickStatus[];
 const EMPTY = { company: "", role: "", url: "" };
 
 /**
@@ -33,7 +35,7 @@ export function QuickAdd({
   onAdded: (item: ApplicationListItem) => void;
 }) {
   const { value, setValue, restored, savedAt, reset } = useAutosave("application:quick", EMPTY);
-  const [status, setStatus] = usePreference<QuickStatus>("canopy:quickadd:status", "APPLIED", ["APPLIED", "WISHLIST"] as const);
+  const [status, setStatus] = usePreference<QuickStatus>("canopy:quickadd:status", "APPLIED", QUICK_STATUSES);
   const [guess, setGuess] = useState<JobUrlGuess | null>(null);
   const [error, setError] = useState<{ field: "company" | "role" | "form"; message: string } | null>(null);
   const [plantKey, setPlantKey] = useState(0);
@@ -130,17 +132,19 @@ export function QuickAdd({
         <Mascot name="clover" mood={pending ? "think" : plantKey ? "cheer" : "idle"} className="size-9 shrink-0" animate={false} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight">Quick add</p>
-          <p className="truncate text-xs text-muted">Company, role, Enter. Paste a job link and we&apos;ll fill what we can.</p>
+          <p className="line-clamp-2 text-xs leading-snug text-muted sm:truncate">Company, role, Enter. Paste a job link and we&apos;ll fill what we can.</p>
         </div>
         <div role="radiogroup" aria-label="Status for quick add" className="inline-flex shrink-0 rounded-full border border-line bg-paper-2 p-0.5 text-xs">
-          {(["APPLIED", "WISHLIST"] as const).map((s) => (
+          {QUICK_STATUSES.map((s) => (
             <button
               key={s}
               type="button"
               role="radio"
               aria-checked={status === s}
+              tabIndex={status === s ? 0 : -1}
               onClick={() => setStatus(s)}
-              className={`h-8 rounded-full px-3 font-medium transition-colors ${status === s ? "bg-card text-ink shadow-soft" : "text-muted hover:text-ink"}`}
+              onKeyDown={(e) => radioKeyNav(e, QUICK_STATUSES, status, setStatus)}
+              className={`h-10 rounded-full px-3 font-medium transition-colors sm:h-8 ${status === s ? "bg-card text-ink shadow-soft" : "text-muted hover:text-ink"}`}
             >
               {s === "APPLIED" ? "Applied" : "Wishlist"}
             </button>
@@ -217,7 +221,7 @@ export function QuickAdd({
 
       <div className="mt-2 flex min-h-5 flex-wrap items-center gap-x-3 gap-y-1 text-xs" aria-live="polite">
         {error ? (
-          <p id="qa-error" role="alert" className="text-coral">
+          <p id="qa-error" role="alert" className="text-coral-ink">
             {error.message}
           </p>
         ) : guess?.platform ? (
@@ -231,7 +235,11 @@ export function QuickAdd({
         {restored && hasText ? (
           <p className="text-muted">
             I kept your draft warm.{" "}
-            <button type="button" onClick={reset} className="font-medium text-ink-soft underline underline-offset-2 hover:text-ink">
+            <button
+              type="button"
+              onClick={reset}
+              className="relative font-medium text-ink-soft underline underline-offset-2 after:absolute after:-inset-3 after:content-[''] hover:text-ink"
+            >
               Discard
             </button>
           </p>

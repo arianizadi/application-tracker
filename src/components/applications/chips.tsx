@@ -15,7 +15,7 @@ export function DeadlineChip({ deadline, status, todayKey }: { deadline: Date | 
   // Once applied, a passed application deadline stops mattering.
   if (days < 0 && status !== "WISHLIST") return null;
   const tone =
-    days < 0 ? "border-line bg-paper-2 text-muted" : days <= 3 ? "border-coral/30 bg-coral-soft text-coral" : days <= 7 ? "border-sun/50 bg-sun-soft text-ink" : "border-line bg-paper-2 text-ink-soft";
+    days < 0 ? "border-line bg-paper-2 text-muted" : days <= 3 ? "border-coral/30 bg-coral-soft text-coral-ink" : days <= 7 ? "border-sun/50 bg-sun-soft text-ink" : "border-line bg-paper-2 text-ink-soft";
   const text = days < 0 ? `Closed ${shortDuration(days)} ago` : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : `Due in ${shortDuration(days)}`;
   return (
     <span className={`${chip} ${tone}`} title={`Deadline ${formatDateKey(key, todayKey)}`}>

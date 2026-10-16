@@ -6,6 +6,7 @@ import { useState, useTransition, type MouseEvent } from "react";
 
 import { Button, buttonClass } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { clearDraft } from "@/hooks/use-autosave";
 import { deleteResume, setDefaultResume } from "@/lib/resumes/actions";
 
 import { EditResumeForm } from "./edit-form";
@@ -71,10 +72,8 @@ export function VersionActions({ id, version, label, notes, isDefault, hasFile, 
         setError(res.error);
         return;
       }
-      try {
-        localStorage.removeItem(`canopy:draft:resume:edit:${id}`);
-        localStorage.removeItem(`canopy:draft:resume:edit:${id}:text`);
-      } catch {}
+      clearDraft(`resume:edit:${id}`);
+      clearDraft(`resume:edit:${id}:text`);
       toast({ tone: "info", title: "Version deleted", body: res.message });
       close();
       if (afterDeleteHref) router.replace(afterDeleteHref);
@@ -170,7 +169,7 @@ export function VersionActions({ id, version, label, notes, isDefault, hasFile, 
             {isDefault ? " Your newest remaining version becomes the default." : ""}
           </p>
           {error ? (
-            <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral">
+            <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">
               {error}
             </p>
           ) : null}

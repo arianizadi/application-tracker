@@ -5,8 +5,11 @@ import { z } from "zod";
 
 import { getDummyHash, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { clientIp, consume, reset } from "@/lib/auth/rate-limit";
+import { safeNext } from "@/lib/auth/safe-next";
 import { createSession, deleteAllSessions, deleteCurrentSession, readSession } from "@/lib/auth/session";
+import { invalidate } from "@/lib/cache-tags";
 import { prisma } from "@/lib/prisma";
+import { isValidTimeZone } from "@/lib/settings/validation";
 import { DEFAULT_TRACK, isTrack } from "@/lib/tracks";
 
 export type AuthFormState = {
@@ -34,6 +37,7 @@ const signupSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   track: z.string().trim().max(40).optional(),
+  timeZone: z.string().trim().max(64).optional(),
 });
 
 const loginSchema = z.object({
@@ -52,12 +56,6 @@ function fieldErrors(error: z.ZodError) {
   return out;
 }
 
-/** Only allow same-site relative redirects after sign-in. */
-function safeNext(value: FormDataEntryValue | null): string {
-  const next = typeof value === "string" ? value : "";
-  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/home";
-}
-
 export async function signup(_state: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const ip = await clientIp();
   if (!(await consume("signup-ip", ip, 10, 60 * 60 * 1000))) {
@@ -69,18 +67,25 @@ export async function signup(_state: AuthFormState, formData: FormData): Promise
     email: formData.get("email"),
     password: formData.get("password"),
     track: formData.get("track") ?? undefined,
+    timeZone: formData.get("timeZone") || undefined,
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
 
   const { name, email, password } = parsed.data;
   const track = isTrack(parsed.data.track) ? parsed.data.track : DEFAULT_TRACK;
+  // The browser's zone, when it sent a valid one; otherwise the schema default.
+  const timeZone = isValidTimeZone(parsed.data.timeZone) ? parsed.data.timeZone : undefined;
+  // Per-email cap slows probing for which addresses already have accounts.
+  if (!(await consume("signup-email", email, 3, 60 * 60 * 1000))) {
+    return { error: "Too many sign-up attempts. Take a breather and try again in a bit." };
+  }
   const passwordHash = await hashPassword(password);
   try {
-    const user = await prisma.user.create({ data: { name, email, passwordHash, track }, select: { id: true } });
+    const user = await prisma.user.create({ data: { name, email, passwordHash, track, ...(timeZone && { timeZone }) }, select: { id: true } });
     await createSession(user.id);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "P2002") {
-      return { fieldErrors: { email: "An account with this email already exists. Try signing in." } };
+      return { error: "We couldn't create that account. If you already have one, sign in instead." };
     }
     console.error("Sign-up failed", error instanceof Error ? error.name : "unknown");
     return { error: "Something went wrong creating your account. Please try again." };
@@ -94,11 +99,15 @@ export async function login(_state: AuthFormState, formData: FormData): Promise<
   const { email, password } = parsed.data;
 
   const ip = await clientIp();
-  const [ipOk, emailOk] = await Promise.all([
+  // The strict per-account limit is keyed by (email, IP) so one attacker can
+  // only lock out their own pair. The per-email ceiling still caps total
+  // guesses against an account across every IP.
+  const [ipOk, emailIpOk, emailOk] = await Promise.all([
     consume("login-ip", ip, 30, WINDOW_15_MIN),
-    consume("login-email", email, 8, WINDOW_15_MIN),
+    consume("login-email-ip", `${email}|${ip}`, 8, WINDOW_15_MIN),
+    consume("login-email", email, 100, WINDOW_15_MIN),
   ]);
-  if (!ipOk || !emailOk) {
+  if (!ipOk || !emailIpOk || !emailOk) {
     return { error: "Too many sign-in attempts. Wait 15 minutes and try again." };
   }
 
@@ -108,7 +117,7 @@ export async function login(_state: AuthFormState, formData: FormData): Promise<
     return { error: "That email and password don't match." };
   }
 
-  await reset("login-email", email);
+  await Promise.all([reset("login-email-ip", `${email}|${ip}`), reset("login-email", email)]);
   await createSession(user.id);
   redirect(safeNext(formData.get("next")));
 }
@@ -164,6 +173,10 @@ export async function signOutEverywhere(): Promise<void> {
 export async function deleteAccount(_state: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const session = await readSession();
   if (!session) redirect("/login");
+  // Shares the change-password budget so the two can't be combined to guess faster.
+  if (!(await consume("change-password", session.user.id, 8, WINDOW_15_MIN))) {
+    return { error: "Too many attempts. Try again in 15 minutes." };
+  }
   const password = String(formData.get("current") ?? "");
   const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { passwordHash: true } });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
@@ -182,6 +195,8 @@ export async function deleteAccount(_state: AuthFormState, formData: FormData): 
     prisma.session.deleteMany({ where: { userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);
+  // Drop cached copies of this user's data too (before redirect, which throws).
+  invalidate(userId, "applications", "resumes", "analyses", "progress", "achievements", "profile");
   await deleteCurrentSession();
   redirect("/?goodbye=1");
 }

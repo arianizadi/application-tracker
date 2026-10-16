@@ -27,7 +27,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         id: "quick-add",
         q: "How fast is adding an application, really?",
-        a: "Company and role are the only required fields, so most people are done in about ten seconds. Status defaults to Applied. Links, deadlines, contacts, salary, notes and how excited you are can all be added later, or never.\n\nOn your phone, the + button in the middle of the bottom bar opens quick add from anywhere.",
+        a: "Company and role are the only required fields, so most people are done in about ten seconds. Status defaults to Applied. Links, deadlines, contacts, salary, notes and how excited you are can all be added later, or never.\n\nOn your phone, the + button in the middle of the bottom bar opens the add form from anywhere (only company and role are required). Quick add also sits at the top of Home and Applications.",
       },
       {
         id: "drafts",
@@ -37,7 +37,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         id: "correct-status",
         q: "Can I fix a status or date I got wrong?",
-        a: "Yes. Open the application and change its status or dates whenever you need to. Each status change is recorded in the application's history, and your stats are recalculated from your corrected data.",
+        a: "Yes. Open the application and change its status or dates whenever you need to. When you log a status change, set \"When did it happen?\" to the day the email actually arrived, so reply times stay honest even if you log it a week late. A step you forgot can be added the same way and lands in the right place on the timeline. Your stats are recalculated from your corrected data.",
       },
       {
         id: "phone",
@@ -53,7 +53,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
       {
         id: "streaks",
         q: "Do I have to keep a streak?",
-        a: "No. Canopy uses a gentle weekly rhythm instead of a daily streak, and you choose the number (anywhere from 1 to 30 applications a week). Missing a week doesn't reset or punish anything. Your rhythm is a suggestion, not a contract.",
+        a: "No. Canopy uses a gentle weekly rhythm instead of a daily streak, and you choose the number (anywhere from 1 to 30 applications a week). Missing a week only affects your weekly streak, and freeze tokens (earned by meeting your goal four weeks running) cover the occasional gap. Nothing else is lost: your XP, achievements and forest stay. Your rhythm is a suggestion, not a contract.",
       },
     ],
   },
@@ -165,6 +165,12 @@ export const FAQ_GROUPS: FaqGroup[] = [
         id: "passwords",
         q: "How is my password stored?",
         a: "Passwords are hashed with scrypt and never stored or logged in plain text. Sign-in uses a random session token in an httpOnly cookie, and only a hash of that token is kept in the database. Sign-in attempts are rate-limited. You can change your password or sign out of every device from Settings.",
+      },
+      {
+        id: "forgot-password",
+        q: "I forgot my password. What now?",
+        a: "If you're still signed in on any device, go to Settings and set a new password there. It also signs out every other device.\n\nIf you're signed out everywhere, there's no self-serve email reset yet. Contact the person who runs this Canopy site; once they've confirmed the account is yours, they can set a temporary password and sign out all of its sessions. Then sign in and change it in Settings.\n\nTip: export your data from Settings every so often, so you always have a copy of your applications.",
+        links: [{ href: "/settings", label: "Go to Settings" }],
       },
       {
         id: "ai",

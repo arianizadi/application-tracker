@@ -5,7 +5,8 @@
  *
  * Definitions (also shown to the user under "How we count"):
  * - Submitted: has an applied date, or ever reached a post-wishlist status
- *   (Applied, OA, Interview, Offer, Accepted, Rejected, Ghosted).
+ *   (Applied, OA, Interview, Offer, Accepted, Rejected, Ghosted), and is not
+ *   back on the wishlist right now (undoing an accidental "Applied").
  * - Reply: ever reached OA, Interview, Offer, Accepted or Rejected
  *   (a rejection *is* a reply; silence and ghosting are not).
  * - Positive next step: ever reached OA, Interview, Offer or Accepted.
@@ -20,10 +21,12 @@
 import type { ApplicationStatus, WorkMode } from "@prisma/client";
 
 import type { SnapshotApplication, UserSnapshot } from "@/lib/data/snapshot";
+import { dateKeyInZone, dateToKey, daysBetweenKeys } from "@/lib/applications/dates";
 import { STATUSES } from "@/lib/status";
 import {
   DAY_MS,
   WEEKDAYS,
+  dateOnlyIndex,
   dayIndex,
   dayLabel,
   dayLongLabel,
@@ -63,6 +66,8 @@ export type Rate = {
   value: number | null;
   /** den < MIN_SAMPLE: show counts, not a verdict. */
   lowSample: boolean;
+  /** Fair rates only: submitted apps left out because they're too new to judge. */
+  excluded?: number;
 };
 
 export type AppFacts = {
@@ -243,23 +248,37 @@ export function makeRate(num: number, den: number): Rate {
 }
 
 function sumRates(rates: Rate[]): Rate {
-  return makeRate(
-    rates.reduce((s, r) => s + r.num, 0),
-    rates.reduce((s, r) => s + r.den, 0),
-  );
+  return {
+    ...makeRate(
+      rates.reduce((s, r) => s + r.num, 0),
+      rates.reduce((s, r) => s + r.den, 0),
+    ),
+    excluded: rates.reduce((s, r) => s + (r.excluded ?? 0), 0),
+  };
 }
 
 /** Fair rate: young applications only count once they've hit the milestone. */
 function fairRate(facts: AppFacts[], hit: (f: AppFacts) => boolean): Rate {
   let num = 0;
   let den = 0;
+  let excluded = 0;
   for (const f of facts) {
     if (!f.submitted) continue;
     const h = hit(f);
     if (h) num++;
     if (h || f.mature) den++;
+    else excluded++;
   }
-  return makeRate(num, den);
+  return { ...makeRate(num, den), excluded };
+}
+
+/**
+ * True when a rate can't say anything yet: nothing counted, or a small sample
+ * made only of hits because every non-hit is still too new (a "5 of 5" that is
+ * really 5 of 10 sent). Showing 100% there would read as reality.
+ */
+export function isTooEarly(rate: Rate): boolean {
+  return rate.den === 0 || (rate.lowSample && rate.num === rate.den && (rate.excluded ?? 0) > 0);
 }
 
 export function median(values: number[]): number | null {
@@ -295,9 +314,12 @@ export function deriveFacts(app: SnapshotApplication, todayIndex: number, timeZo
   const createdAt = toDate(app.createdAt) ?? new Date(0);
   const updatedAt = toDate(app.updatedAt) ?? createdAt;
 
-  const submitted = appliedAt !== null || has(SUBMITTED_STATES);
+  // Moving an app back to the wishlist undoes an accidental "Applied" (appliedAt
+  // is cleared, but the APPLIED event stays in history), so it isn't counted.
+  const submitted = app.status !== "WISHLIST" && (appliedAt !== null || has(SUBMITTED_STATES));
   const submittedAt = submitted ? (appliedAt ?? firstAt(history, SUBMITTED_STATES) ?? createdAt) : null;
-  const submittedDay = submittedAt ? dayIndex(submittedAt, timeZone) : null;
+  // appliedAt is a calendar day (stored at noon UTC); history events are real instants.
+  const submittedDay = !submittedAt ? null : appliedAt ? dateOnlyIndex(appliedAt) : dayIndex(submittedAt, timeZone);
   const anchorDay = submittedDay ?? dayIndex(createdAt, timeZone);
 
   const responded = submitted && has(REPLY_STATES);
@@ -544,10 +566,14 @@ export function computeStats(
     { label: "31+ days", lo: 31, hi: Infinity },
   ].map((b) => ({ label: b.label, count: awaiting.filter((f) => f.ageDays! >= b.lo && f.ageDays! <= b.hi).length }));
 
-  const nowMs = now.getTime();
+  // Follow-up dates are calendar days: compare date keys, like the board and Home do.
+  const todayKey = dateKeyInZone(now, timeZone);
   const followUpsDue = all
-    .filter((f) => f.followUpAt && f.followUpAt.getTime() <= nowMs && PIPELINE_ACTIVE.includes(f.status))
-    .map((f) => ({ id: f.id, company: f.company, role: f.role, days: Math.max(0, Math.floor((nowMs - f.followUpAt!.getTime()) / DAY_MS)) }))
+    .flatMap((f) => {
+      if (!f.followUpAt || !PIPELINE_ACTIVE.includes(f.status)) return [];
+      const overdue = daysBetweenKeys(dateToKey(f.followUpAt), todayKey);
+      return overdue >= 0 ? [{ id: f.id, company: f.company, role: f.role, days: overdue }] : [];
+    })
     .sort((a, b) => b.days - a.days);
   const waiting = awaiting
     .filter((f) => f.ageDays! >= WAITING_DAYS && !f.followUpAt) // dated follow-ups are tracked above
@@ -581,7 +607,10 @@ export function computeStats(
   const bump = (m: Map<number, number>, k: number) => m.set(k, (m.get(k) ?? 0) + 1);
   for (const app of snapshot.applications) {
     const events = (app.history ?? []).map((h) => toDate(h.at)).filter((d): d is Date => d !== null);
-    if (events.length === 0) bump(actions, dayIndex(toDate(app.appliedAt) ?? toDate(app.createdAt) ?? now, timeZone));
+    if (events.length === 0) {
+      const appliedAt = toDate(app.appliedAt);
+      bump(actions, appliedAt ? dateOnlyIndex(appliedAt) : dayIndex(toDate(app.createdAt) ?? now, timeZone));
+    }
     for (const at of events) bump(actions, dayIndex(at, timeZone));
   }
   for (const f of submittedAll) bump(subs, f.submittedDay!);

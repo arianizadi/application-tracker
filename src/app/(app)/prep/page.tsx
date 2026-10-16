@@ -10,6 +10,7 @@ import { RichText, safeHref } from "@/components/prep/rich-text";
 import { PageHeader, Skeleton } from "@/components/ui/card";
 import { getModule, RESOURCE_BY_ID } from "@/content/prep";
 import { requireUser } from "@/lib/auth/dal";
+import { dateKeyInZone } from "@/lib/applications/dates";
 import { getSnapshot } from "@/lib/data/snapshot";
 import { courseOverview, type CourseOverview } from "@/lib/prep/course";
 import { getRecommendations, type Recommendation } from "@/lib/prep/detections";
@@ -40,8 +41,9 @@ async function PrepContent() {
   const snapshot = await getSnapshot(user.id);
   // Clock reads come after runtime data under Cache Components.
   const now = new Date();
+  const todayKey = dateKeyInZone(now, user.timeZone || "UTC");
   const overview = courseOverview(toProgressMap(snapshot.progress));
-  const recs = [...getRecommendations(snapshot, user.track, now)].sort((a, b) => b.priority - a.priority).slice(0, 4);
+  const recs = [...getRecommendations(snapshot, user.track, now, todayKey)].sort((a, b) => b.priority - a.priority).slice(0, 4);
 
   return (
     <div className="flex flex-col gap-10">
@@ -90,12 +92,15 @@ function CourseHero({ overview }: { overview: CourseOverview }) {
     <section aria-label="Your course progress" className="relative overflow-hidden rounded-[2rem] border border-line bg-card shadow-soft">
       <div aria-hidden className="pointer-events-none absolute -left-16 -top-24 size-72 rounded-full bg-moss-soft/80 blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -bottom-24 right-0 size-64 rounded-full bg-sun-soft/80 blur-3xl" />
-      <div className="relative grid gap-6 p-5 sm:p-8 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)] lg:items-center lg:gap-10">
+      <div className="relative grid grid-cols-1 gap-6 p-5 sm:p-8 lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)] lg:items-center lg:gap-10">
         <div className="flex items-center gap-4 sm:gap-6 lg:block">
-          <ProgressRing value={progress.modulesDone} max={totals.modules} size={128} stroke={9} label={`${progress.modulesDone} of ${totals.modules} modules complete`}>
+          <ProgressRing value={progress.modulesDone} max={totals.modules} size={128} stroke={9} className="max-sm:size-22!" label={`${progress.modulesDone} of ${totals.modules} modules complete`}>
             <span>
-              <span className="block font-display text-4xl font-semibold leading-none tabular">{progress.modulesDone}</span>
-              <span className="mt-1 block text-xs font-medium text-muted">of {totals.modules} modules</span>
+              <span className="block font-display text-3xl font-semibold leading-none tabular sm:text-4xl">{progress.modulesDone}</span>
+              <span className="mt-1 block text-[11px] font-medium text-muted sm:text-xs">
+                of {totals.modules}
+                <span className="max-sm:hidden"> modules</span>
+              </span>
             </span>
           </ProgressRing>
           <div className="min-w-0 flex-1 lg:hidden">
@@ -131,12 +136,15 @@ function HeroCta({ upNext }: { upNext: CourseOverview["upNext"] }) {
   return (
     <Link
       href={`/prep/${upNext.id}`}
-      className="group inline-flex min-h-12 max-w-full items-center gap-3 rounded-[1.75rem] bg-moss py-2 pl-2 pr-4 text-paper shadow-soft transition-colors hover:bg-moss-strong sm:pr-5"
+      className="group inline-flex min-h-12 max-w-full items-center gap-3 rounded-[1.75rem] bg-moss py-2.5 pl-4 pr-4 text-paper shadow-soft transition-colors hover:bg-moss-strong sm:py-2 sm:pl-2 sm:pr-5"
     >
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-paper/15 font-display text-sm font-semibold">{pad2(upNext.number)}</span>
+      <span className="hidden size-9 shrink-0 place-items-center rounded-full bg-paper/15 font-display text-sm font-semibold sm:grid">{pad2(upNext.number)}</span>
       <span className="min-w-0 text-left">
-        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] opacity-80">{upNext.started ? "Continue" : "Start here"}</span>
-        <span className="line-clamp-2 block text-sm font-semibold leading-snug">{upNext.title}</span>
+        <span className="block text-[11px] font-medium uppercase tracking-[0.12em] opacity-80">
+          {upNext.started ? "Continue" : "Start here"}
+          <span className="sm:hidden"> · {pad2(upNext.number)}</span>
+        </span>
+        <span className="line-clamp-2 text-sm font-semibold leading-snug">{upNext.title}</span>
       </span>
       <PrepIcon name="arrow-right" className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
     </Link>
@@ -177,12 +185,12 @@ function Recommendations({ items }: { items: Recommendation[] }) {
         }
         className="mb-4"
       />
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {items.map((rec) => {
           const modules = rec.moduleIds.map((id) => getModule(id)).filter((m) => m !== undefined);
           const resources = rec.resourceIds.map((id) => RESOURCE_BY_ID[id]).filter((r) => r !== undefined);
           return (
-            <li key={rec.id} className="flex flex-col rounded-3xl border border-coral/25 bg-gradient-to-br from-coral-soft/60 via-card to-card p-5 shadow-soft">
+            <li key={rec.id} className="flex min-w-0 flex-col rounded-3xl border border-coral/25 bg-gradient-to-br from-coral-soft/60 via-card to-card p-5 shadow-soft">
               <h3 className="text-lg font-semibold leading-snug">{rec.title}</h3>
               <p className="mt-1.5 text-[14.5px] leading-relaxed text-ink-soft">
                 <RichText text={rec.message} />
@@ -207,10 +215,12 @@ function Recommendations({ items }: { items: Recommendation[] }) {
                     if (!href) return null;
                     return (
                       <li key={r.id}>
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="group flex min-h-11 items-center gap-2.5 rounded-xl px-2 text-sm text-ink-soft hover:bg-paper-2 hover:text-ink">
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="group flex min-h-11 items-center gap-2.5 rounded-xl px-2 py-1.5 text-sm text-ink-soft hover:bg-paper-2 hover:text-ink">
                           <PrepIcon name="external" className="size-3.5 shrink-0 text-muted group-hover:text-moss" />
-                          <span className="min-w-0 flex-1 truncate">{r.title}</span>
-                          <span className="shrink-0 text-xs text-muted">{r.time}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{r.title}</span>
+                            {r.time ? <span className="block truncate text-xs text-muted">{r.time}</span> : null}
+                          </span>
                           <span className="sr-only">(opens in a new tab)</span>
                         </a>
                       </li>
@@ -253,7 +263,7 @@ function QuickLinks({ overview }: { overview: CourseOverview }) {
   ];
   return (
     <nav aria-label="Practice tools">
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {links.map((l) => (
           <li key={l.href}>
             <Link
@@ -282,7 +292,7 @@ function PrepSkeleton() {
   return (
     <div role="status" aria-label="Loading your prep" className="flex flex-col gap-10">
       <Skeleton className="h-64 rounded-[2rem]" />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Skeleton className="h-24 rounded-3xl" />
         <Skeleton className="h-24 rounded-3xl" />
         <Skeleton className="h-24 rounded-3xl" />

@@ -7,6 +7,7 @@ import { ResourceLibrary } from "@/components/prep/resource-library";
 import { PageHeader, Skeleton } from "@/components/ui/card";
 import { getModule, RESOURCE_BY_ID, RESOURCES } from "@/content/prep";
 import { requireUser } from "@/lib/auth/dal";
+import { dateKeyInZone } from "@/lib/applications/dates";
 import { getSnapshot } from "@/lib/data/snapshot";
 import { courseOverview } from "@/lib/prep/course";
 import { getRecommendations } from "@/lib/prep/detections";
@@ -41,6 +42,7 @@ async function Library() {
   const user = await requireUser();
   const snapshot = await getSnapshot(user.id);
   const now = new Date();
+  const todayKey = dateKeyInZone(now, user.timeZone || "UTC");
   const map = toProgressMap(snapshot.progress, ["resource", "module", "question"]);
 
   // "For you now": the detector's picks, then the resources of the module you're on.
@@ -48,7 +50,7 @@ async function Library() {
   const add = (id: string) => {
     if (RESOURCE_BY_ID[id] && !ids.includes(id)) ids.push(id);
   };
-  for (const rec of [...getRecommendations(snapshot, user.track, now)].sort((a, b) => b.priority - a.priority)) rec.resourceIds.forEach(add);
+  for (const rec of [...getRecommendations(snapshot, user.track, now, todayKey)].sort((a, b) => b.priority - a.priority)) rec.resourceIds.forEach(add);
   const upNext = courseOverview(map).upNext;
   if (upNext) getModule(upNext.id)?.resourceIds.slice(0, 3).forEach(add);
 
@@ -60,7 +62,7 @@ function LibrarySkeleton() {
     <div role="status" aria-label="Loading the library" className="flex flex-col gap-6">
       <Skeleton className="h-12 w-full rounded-full sm:w-80" />
       <Skeleton className="h-12 w-full rounded-full" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <Skeleton key={i} className="h-72 rounded-3xl" />
         ))}

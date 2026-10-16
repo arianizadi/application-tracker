@@ -72,7 +72,7 @@ export function PasswordForm() {
       </label>
       <div aria-live="polite">
         {state?.error ? (
-          <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral">
+          <p role="alert" className="rounded-xl border border-coral/30 bg-coral-soft px-3.5 py-2.5 text-sm text-coral-ink">
             {state.error}
           </p>
         ) : state?.ok ? (

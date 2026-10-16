@@ -1,10 +1,12 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { clearAllDrafts } from "@/hooks/use-autosave";
 import { deleteAccount, signOutEverywhere, type AuthFormState } from "@/lib/auth/actions";
 
 const PHRASE = "delete my forest";
@@ -25,7 +27,7 @@ function PendingSubmit({ children, pendingLabel, variant = "secondary", disabled
 
 export function SignOutEverywhereForm() {
   return (
-    <form action={signOutEverywhere} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <form action={signOutEverywhere} onSubmit={() => clearAllDrafts()} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm leading-relaxed text-ink-soft">
         Lost a phone or used a library computer? This signs out every device, including this one.
       </p>
@@ -37,7 +39,20 @@ export function SignOutEverywhereForm() {
 export function DeleteAccountForm() {
   const [open, setOpen] = useState(false);
   const [phrase, setPhrase] = useState("");
-  const [state, formAction] = useActionState<AuthFormState, FormData>(deleteAccount, undefined);
+  const [state, formAction] = useActionState<AuthFormState, FormData>(async (prev, formData) => {
+    // Wipe this device's drafts up front (success redirects away), and put
+    // them back if the server refuses, e.g. a mistyped password.
+    const restoreDrafts = clearAllDrafts();
+    try {
+      const result = await deleteAccount(prev, formData);
+      restoreDrafts();
+      return result;
+    } catch (error) {
+      unstable_rethrow(error); // The success redirect: the account is gone, keep the drafts gone too.
+      restoreDrafts();
+      throw error;
+    }
+  }, undefined);
   const errors = state?.fieldErrors ?? {};
   const matches = phrase.trim().toLowerCase() === PHRASE;
 
@@ -94,7 +109,7 @@ export function DeleteAccountForm() {
         />
       </Field>
       {state?.error ? (
-        <p role="alert" className="text-sm text-coral">
+        <p role="alert" className="text-sm text-coral-ink">
           {state.error}
         </p>
       ) : null}

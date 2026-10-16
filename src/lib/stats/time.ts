@@ -35,6 +35,15 @@ export function dayIndex(date: Date, timeZone: string): number {
   return Math.floor(Date.UTC(y, m - 1, d) / DAY_MS);
 }
 
+/**
+ * Day index of a day-granular stored date (appliedAt, deadline, followUpAt).
+ * Those are saved at 12:00 UTC of their calendar day, so the UTC day *is* the
+ * user's day; converting them through a time zone would shift UTC+12…+14 users.
+ */
+export function dateOnlyIndex(date: Date): number {
+  return Math.floor(date.getTime() / DAY_MS);
+}
+
 /** 0 = Monday … 6 = Sunday (1970-01-01 was a Thursday). */
 export function weekdayOf(index: number): number {
   return (((index + 3) % 7) + 7) % 7;

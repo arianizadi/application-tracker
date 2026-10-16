@@ -4,7 +4,8 @@ import type { CalendarDay, Stats } from "@/lib/stats/compute";
 import { plural } from "@/lib/stats/format";
 
 const CELL = 14;
-const GUTTER = 20;
+/** Day labels live in HTML beside the SVG so they keep a readable size when the SVG scales down. */
+const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
 const LEVEL_OPACITY = [1, 0.3, 0.52, 0.76, 1] as const;
 const LEAF = "M6 .9C9.7 2.3 10.7 6.7 6 11.2 1.3 6.7 2.3 2.3 6 .9Z";
 
@@ -28,7 +29,7 @@ function Leaf({ day, symbolId, i }: { day: CalendarDay; symbolId: string; i: num
 export function ActivityCalendar({ calendar, idPrefix = "cal" }: { calendar: Stats["calendar"]; idPrefix?: string }) {
   const symbolId = `${idPrefix}-leaf`;
   const cols = calendar.weeks.length;
-  const width = GUTTER + cols * CELL;
+  const width = cols * CELL;
   const height = 7 * CELL;
   const days = calendar.weeks.flat();
 
@@ -52,31 +53,33 @@ export function ActivityCalendar({ calendar, idPrefix = "cal" }: { calendar: Sta
           : "No leaves yet. Your first application will grow the first one."}
       </p>
       <TipLayer className="mx-auto w-full max-w-[44rem]">
-        <div aria-hidden className="relative h-5 text-[10px] text-muted">
-          {calendar.months.map((m) => (
-            <span key={m.col} className="absolute top-0" style={{ left: `${((GUTTER + m.col * CELL) / width) * 100}%` }}>
-              {m.label}
-            </span>
-          ))}
-        </div>
-        <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full" role="img" aria-label={`Activity over the last 26 weeks: ${plural(calendar.totalActions, "update")} on ${plural(calendar.activeDays, "day")}. Full numbers in the table below.`}>
-          <defs>
-            <symbol id={symbolId} viewBox="0 0 12 12" width="12" height="12">
-              <path d={LEAF} />
-              <path d="M6 3.2v7" stroke="var(--card)" strokeOpacity=".35" strokeWidth=".8" fill="none" />
-            </symbol>
-          </defs>
-          <g aria-hidden fontSize="7" fill="var(--muted)">
-            {[["Mon", 0], ["Wed", 2], ["Fri", 4]].map(([d, r]) => (
-              <text key={d} x={0} y={Number(r) * CELL + 9.5}>
+        <div className="flex gap-1.5">
+          <div aria-hidden className="grid w-7 shrink-0 grid-rows-7 pt-5 text-[11px] leading-none text-muted">
+            {DAY_LABELS.map((d, i) => (
+              <span key={i} className="flex items-center">
                 {d}
-              </text>
+              </span>
             ))}
-          </g>
-          <g transform={`translate(${GUTTER} 0)`}>
-            {days.map((d, i) => (d.future ? null : <Leaf key={d.index} day={d} symbolId={symbolId} i={i} />))}
-          </g>
-        </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <div aria-hidden className="relative h-5 text-[11px] text-muted">
+              {calendar.months.map((m) => (
+                <span key={m.col} className="absolute top-0" style={{ left: `${((m.col * CELL) / width) * 100}%` }}>
+                  {m.label}
+                </span>
+              ))}
+            </div>
+            <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full" role="img" aria-label={`Activity over the last 26 weeks: ${plural(calendar.totalActions, "update")} on ${plural(calendar.activeDays, "day")}. Full numbers in the table below.`}>
+              <defs>
+                <symbol id={symbolId} viewBox="0 0 12 12" width="12" height="12">
+                  <path d={LEAF} />
+                  <path d="M6 3.2v7" stroke="var(--card)" strokeOpacity=".35" strokeWidth=".8" fill="none" />
+                </symbol>
+              </defs>
+              {days.map((d, i) => (d.future ? null : <Leaf key={d.index} day={d} symbolId={symbolId} i={i} />))}
+            </svg>
+          </div>
+        </div>
       </TipLayer>
       <div aria-hidden className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-muted">
         <span>Less</span>
