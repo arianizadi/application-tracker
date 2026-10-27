@@ -10,7 +10,7 @@ import { normalizeResumeText } from "@/lib/resumes/text";
 /** Resumes longer than this are almost certainly the wrong file. */
 export const MAX_PDF_PAGES = 30;
 
-export type PdfReadReason = "unreadable" | "too-many-pages" | "timeout" | "busy";
+export type PdfReadReason = "unreadable" | "too-many-pages" | "timeout" | "busy" | "unavailable";
 
 export class PdfReadError extends Error {
   constructor(

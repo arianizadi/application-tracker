@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "check": "bun run lint && bun run typecheck && prisma validate",
+    "test": "bun test",
+    "check": "bun run lint && bun run typecheck && bun run test && prisma validate",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -18,23 +19,23 @@
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
-    "next": "16.4.2",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "server-only": "0.0.1",
-    "unpdf": "^1.9.0",
+    "unpdf": "^1.9.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.2",
+    "@tailwindcss/turbopack": "^4.3.3",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.3",
     "prisma": "6.19.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3"
   },
   "packageManager": "bun@1.4.3",
   "ignoreScripts": [
@@ -50,5 +51,8 @@
   ],
   "engines": {
     "node": "24.x"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
   }
 }

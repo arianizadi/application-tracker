@@ -2,7 +2,7 @@ import "server-only";
 
 import { Worker } from "node:worker_threads";
 
-import { extractPdfTextDirect, PdfReadError, type PdfExtraction } from "@/lib/resumes/pdf-extract";
+import { PdfReadError, type PdfExtraction } from "@/lib/resumes/pdf-extract";
 import type { PdfWorkerRequest, PdfWorkerResponse } from "@/lib/resumes/pdf-worker";
 
 export { MAX_PDF_PAGES, PdfReadError } from "@/lib/resumes/pdf-extract";
@@ -46,8 +46,6 @@ function releaseSlot() {
   else active--;
 }
 
-/** Set once the worker fails to boot (e.g. its chunk is missing), so later uploads skip straight to in-process. */
-let workerUnavailable = false;
 const WORKER_UNAVAILABLE = Symbol("worker-unavailable");
 
 /**
@@ -99,23 +97,6 @@ function extractInWorker(bytes: Uint8Array, maxChars: number): Promise<PdfExtrac
   });
 }
 
-/** Fallback when worker threads are unavailable: pdf.js runs here, and the timeout aborts it cooperatively. */
-async function extractInProcess(bytes: Uint8Array, maxChars: number): Promise<PdfExtraction> {
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => {
-      controller.abort();
-      reject(timeoutError());
-    }, EXTRACT_TIMEOUT_MS);
-  });
-  try {
-    return await Promise.race([extractPdfTextDirect(bytes, maxChars, controller.signal), timeout]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /**
  * Extracts plain text from a PDF's text layer. Scanned PDFs (images only) return
  * little or no text; callers decide how to warn about that.
@@ -126,12 +107,15 @@ export async function extractPdfText(bytes: Uint8Array, maxChars: number): Promi
 
   await acquireSlot();
   try {
-    if (!workerUnavailable) {
-      const result = await extractInWorker(copy, maxChars);
-      if (result !== WORKER_UNAVAILABLE) return result;
-      workerUnavailable = true;
+    const result = await extractInWorker(copy, maxChars);
+    if (result === WORKER_UNAVAILABLE) {
+      // A timer cannot interrupt synchronous pdf.js parsing on this thread.
+      // Keep the heap/time isolation boundary even if a deployment is missing
+      // its worker chunk. Retry worker startup on the next upload so a transient
+      // failure does not permanently disable PDF uploads for this process.
+      throw new PdfReadError("unavailable", "PDF reading is temporarily unavailable. Try again, or paste your resume text instead.");
     }
-    return await extractInProcess(new Uint8Array(bytes), maxChars);
+    return result;
   } finally {
     releaseSlot();
   }
